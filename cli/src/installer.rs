@@ -5,11 +5,12 @@
 
 //! installer module
 
+use cliclack::note;
 use color_eyre::{eyre::eyre, Result};
 use disks::BlockDevice;
 use miette::GraphicalReportHandler;
 use provisioning::{Provisioner, StrategyDefinition};
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, trace};
 
 pub struct Installer {
     pub devices: Vec<BlockDevice>,
@@ -110,13 +111,19 @@ impl Installer {
 
         let effort = plans.get(plan_index).unwrap();
         for (_, plan) in effort.device_assignments.iter() {
-            warn!(
-                "Changes to {:?}: {}",
-                plan.device.device(),
-                plan.planner.describe_changes()
-            );
+            note(
+                format!("Changes to {:?}", plan.device.device()),
+                plan.planner.describe_changes(),
+            )?;
         }
-
+        let mut mountpoints = effort
+            .role_mounts
+            .iter()
+            .map(|(role, what)| format!("{:?} on {}", what, role.as_path()))
+            .collect::<Vec<_>>();
+        mountpoints.sort();
+        let string_mountpoints = mountpoints.join("\n");
+        note("Mountpoints", &string_mountpoints)?;
         Ok(())
     }
 }
