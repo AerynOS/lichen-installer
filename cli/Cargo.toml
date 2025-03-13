@@ -9,6 +9,7 @@ name = "lichen_cli"
 path = "src/main.rs"
 
 [dependencies]
+cliclack.workspace = true
 color-eyre = { workspace = true, features = ["issue-url"] }
 console.workspace = true
 disks.workspace = true

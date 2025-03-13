@@ -9,6 +9,7 @@ resolver = "2"
 
 
 [workspace.dependencies]
+cliclack = { git = "https://github.com/ikeycode/cliclack.git", version = "0.3.5" }
 color-eyre = "0.6.3"
 console = "0.15.11"
 disks = { git = "https://github.com/AerynOS/disks-rs.git", version = "0.1.0" }

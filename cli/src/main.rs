@@ -3,35 +3,13 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use cli::{installer::Installer, logging::CliclackLayer};
 use color_eyre::Result;
-use disks::BlockDevice;
+use console::style;
 use std::env;
 use std::fs::File;
-use tracing::{error, info, trace};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
-
-// If the blockdevice is not a loop device, it is usable
-// for our purposes
-fn is_disk_usable(device: &BlockDevice) -> bool {
-    !matches!(device, BlockDevice::Loopback(_))
-}
-
-// Discover all block devices and filter out the ones
-// that are usable for our purposes
-fn usable_disks() -> Result<Vec<BlockDevice>> {
-    match BlockDevice::discover() {
-        Ok(devices) => {
-            let devices: Vec<BlockDevice> = devices.into_iter().filter(is_disk_usable).collect();
-            info!("Found {} usable block devices", devices.len());
-            Ok(devices)
-        }
-        Err(e) => {
-            error!("Error discovering block devices: {}", e);
-            Ok(vec![])
-        }
-    }
-}
 
 // Setup eyre for better error handling
 fn setup_eyre() {
@@ -49,14 +27,6 @@ fn setup_eyre() {
 // Configure tracing for logging
 // Now we dump to both output and file
 fn configure_tracing() -> Result<()> {
-    let console_format = Format::default()
-        .with_ansi(true)
-        .with_timer(tracing_subscriber::fmt::time::uptime())
-        .with_file(false)
-        .with_line_number(false)
-        .with_target(true)
-        .with_thread_ids(false);
-
     let file = File::create("installer.log")?;
     let file_format = Format::default()
         .with_ansi(false)
@@ -66,15 +36,9 @@ fn configure_tracing() -> Result<()> {
         .with_target(true)
         .with_thread_ids(true);
 
-    let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let file_filter = EnvFilter::new("trace");
 
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .event_format(console_format)
-                .with_filter(console_filter),
-        )
         .with(
             tracing_subscriber::fmt::layer()
                 .event_format(file_format)
@@ -82,6 +46,7 @@ fn configure_tracing() -> Result<()> {
                 .with_filter(file_filter),
         )
         .with(ErrorLayer::default())
+        .with(CliclackLayer)
         .init();
 
     Ok(())
@@ -92,12 +57,9 @@ fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
-    trace!("Probing disks");
-    let disks = usable_disks()?;
-    for disk in disks {
-        println!("Disk: {disk:?}");
-    }
-    println!("Hello, world!");
+    cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
+    let _installer = Installer::new()?;
+    cliclack::outro("Installation complete")?;
 
     Ok(())
 }
