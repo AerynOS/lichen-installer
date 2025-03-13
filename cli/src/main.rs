@@ -6,6 +6,7 @@
 use color_eyre::Result;
 use disks::BlockDevice;
 use std::env;
+use tracing::{error, info, trace};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -20,11 +21,12 @@ fn is_disk_usable(device: &BlockDevice) -> bool {
 fn usable_disks() -> Result<Vec<BlockDevice>> {
     match BlockDevice::discover() {
         Ok(devices) => {
-            let devices = devices.into_iter().filter(is_disk_usable).collect();
+            let devices: Vec<BlockDevice> = devices.into_iter().filter(is_disk_usable).collect();
+            info!("Found {} usable block devices", devices.len());
             Ok(devices)
         }
         Err(e) => {
-            eprintln!("Error discovering block devices: {}", e);
+            error!("Error discovering block devices: {}", e);
             Ok(vec![])
         }
     }
@@ -69,6 +71,7 @@ fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
+    trace!("Probing disks");
     let disks = usable_disks()?;
     for disk in disks {
         println!("Disk: {disk:?}");
