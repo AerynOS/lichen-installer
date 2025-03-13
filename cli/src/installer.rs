@@ -45,17 +45,21 @@ fn usable_disks() -> Result<Vec<BlockDevice>> {
     }
 }
 
+pub mod builtin_strategies {
+    pub const WHOLE_DISK: &str = include_str!("../../strategies/use_whole_disk.kdl");
+}
+
 impl Installer {
     // Create a new installer instance
     pub fn new() -> Result<Self> {
+        let strategies = Self::load_strategies("use_whole_disk", builtin_strategies::WHOLE_DISK)?;
         let devices = usable_disks()?;
-        let strategies = Self::load_strategies("strategies/use_whole_disk.kdl")?;
         Ok(Self { devices, strategies })
     }
 
     // Load strategies from a file, Render an error if it fails
-    fn load_strategies(path: &str) -> Result<Vec<StrategyDefinition>> {
-        let parser = provisioning::Parser::new_for_path(path);
+    fn load_strategies(name: &str, contents: &str) -> Result<Vec<StrategyDefinition>> {
+        let parser = provisioning::Parser::new(name.to_string(), contents.to_string());
         match parser {
             Ok(parser) => Ok(parser.strategies),
             Err(e) => {
