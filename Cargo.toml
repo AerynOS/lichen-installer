@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "lichen_cli",
+    "cli",
 ]
 default-members = [
-    "lichen_cli"
+    "cli"
 ]
 resolver = "2"
 
