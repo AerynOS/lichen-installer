@@ -2,12 +2,19 @@
 name = "cli"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/AerynOS/lichen-installer"
 
 [[bin]]
 name = "lichen_cli"
 path = "src/main.rs"
 
 [dependencies]
+color-eyre = { workspace = true, features = ["issue-url"] }
+console.workspace = true
+disks.workspace = true
+tracing.workspace = true
+tracing-error.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [lints]
 workspace = true
