@@ -47,4 +47,25 @@ impl Installer {
         let devices = usable_disks()?;
         Ok(Self { devices })
     }
+
+    // Render a block device to a string
+    fn render_device(device: &BlockDevice) -> String {
+        match device {
+            BlockDevice::Loopback(_) => "Loopback device".to_string(),
+            BlockDevice::Disk(disk) => disk.to_string(),
+        }
+    }
+
+    pub fn run(&self) -> Result<()> {
+        let renderable_devices = self
+            .devices
+            .iter()
+            .map(|d| (d.device(), Self::render_device(d), "".to_string()))
+            .collect::<Vec<_>>();
+
+        cliclack::select("What disk would you like to install AerynOS on?")
+            .items(&renderable_devices)
+            .interact()?;
+        Ok(())
+    }
 }

@@ -58,7 +58,8 @@ fn main() -> Result<()> {
     configure_tracing()?;
 
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
-    let _installer = Installer::new()?;
+    let installer = Installer::new()?;
+    installer.run()?;
     cliclack::outro("Installation complete")?;
 
     Ok(())
