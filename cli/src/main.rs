@@ -6,9 +6,10 @@
 use color_eyre::Result;
 use disks::BlockDevice;
 use std::env;
+use std::fs::File;
 use tracing::{error, info, trace};
 use tracing_error::ErrorLayer;
-use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 // If the blockdevice is not a loop device, it is usable
 // for our purposes
@@ -46,9 +47,9 @@ fn setup_eyre() {
 }
 
 // Configure tracing for logging
-// Right now we dump to output but we will change to dump to file
+// Now we dump to both output and file
 fn configure_tracing() -> Result<()> {
-    let f = Format::default()
+    let console_format = Format::default()
         .with_ansi(true)
         .with_timer(tracing_subscriber::fmt::time::uptime())
         .with_file(false)
@@ -56,10 +57,30 @@ fn configure_tracing() -> Result<()> {
         .with_target(true)
         .with_thread_ids(false);
 
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let file = File::create("installer.log")?;
+    let file_format = Format::default()
+        .with_ansi(false)
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_file(false)
+        .with_line_number(false)
+        .with_target(true)
+        .with_thread_ids(true);
+
+    let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let file_filter = EnvFilter::new("trace");
+
     tracing_subscriber::registry()
-        .with(filter)
-        .with(tracing_subscriber::fmt::layer().event_format(f))
+        .with(
+            tracing_subscriber::fmt::layer()
+                .event_format(console_format)
+                .with_filter(console_filter),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .event_format(file_format)
+                .with_writer(file)
+                .with_filter(file_filter),
+        )
         .with(ErrorLayer::default())
         .init();
 
