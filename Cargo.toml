@@ -13,6 +13,8 @@ cliclack = { git = "https://github.com/ikeycode/cliclack.git", version = "0.3.5"
 color-eyre = "0.6.3"
 console = "0.15.11"
 disks = { git = "https://github.com/AerynOS/disks-rs.git", version = "0.1.0" }
+provisioning = { git = "https://github.com/AerynOS/disks-rs.git", version = "0.1.0" }
+miette = "7.5.0"
 tracing = "0.1.41"
 tracing-error = "0.2.1"
 tracing-subscriber = "0.3.19"

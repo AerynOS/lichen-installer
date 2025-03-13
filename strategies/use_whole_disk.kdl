@@ -1,0 +1,52 @@
+strategy name="whole_disk" summary="Wipe and use an entire disk" {
+    // Find a disk with the given constraints and then label it
+    // We may find "any disk"
+    // The result is stored in "root_disk" (disk=..)
+    find-disk "root_disk" {
+        constraints {
+            min (GiB)30
+        }
+    }
+
+    // Create a partition table. Defaults to GPT
+    create-partition-table type="gpt" disk="root_disk"
+
+    // Create the ESP
+    create-partition disk="root_disk" role="boot" id="esp" {
+        constraints {
+            min (GiB)1
+            max (GiB)2
+        }
+        type (GUID)"efi-system-partition"
+        filesystem {
+            type "fat32"
+            label "ESP"
+        }
+    }
+
+    // Create xbootldr
+    create-partition disk="root_disk" role="extended-boot" id="xbootldr" {
+        constraints {
+            min (GiB)2
+            max (GiB)4
+        }
+        type (GUID) "linux-extended-boot"
+        filesystem {
+            type "fat32"
+            label "XBOOTLDR"
+        }
+    }
+
+    // Create a partition for rootfs
+    create-partition disk="root_disk" id="root" role="root" {
+        constraints {
+            min (GiB)25
+            max (GiB)120
+        }
+        type (GUID)"linux-fs"
+        filesystem {
+            type "xfs"
+            label "ROOT"
+        }
+    }
+}

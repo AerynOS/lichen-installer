@@ -60,7 +60,7 @@ fn main() -> Result<()> {
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
     let installer = Installer::new()?;
     installer.run()?;
-    cliclack::outro("Installation complete")?;
+    cliclack::outro_cancel("Installation cancelled")?;
 
     Ok(())
 }
