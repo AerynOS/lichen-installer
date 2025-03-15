@@ -5,4 +5,5 @@
 
 pub mod installer;
 pub mod logging;
+pub mod model;
 pub mod strategies;
