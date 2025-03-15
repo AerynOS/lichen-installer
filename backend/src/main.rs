@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::path::Path;
+use protocols::privileged::{service_init, ServiceListener};
 use tokio::net::UnixListener;
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
@@ -31,17 +31,11 @@ impl proto_disks::disks_server::Disks for DiskService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = "/tmp/service.sock";
-
-    // Remove existing socket if present
-    if Path::new(path).exists() {
-        std::fs::remove_file(path)?;
-    }
-
-    let listener = UnixListener::bind(path)?;
-    let uds_stream = UnixListenerStream::new(listener);
-
-    println!("Server listening on {}", path);
+    service_init()?;
+    let listener = ServiceListener::new()?;
+    listener.set_nonblocking(true)?;
+    let as_tokio = UnixListener::from_std(listener.0)?;
+    let uds_stream = UnixListenerStream::new(as_tokio);
 
     Server::builder()
         // Add service implementations here with .add_service()

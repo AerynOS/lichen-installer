@@ -54,7 +54,9 @@ fn configure_tracing() -> Result<()> {
 }
 
 async fn test_client() -> Result<(), Box<dyn std::error::Error>> {
-    let le_client = protocols::unix_channel("/tmp/service.sock").await?;
+    let our_bin = env::current_exe()?;
+    let our_exe = our_bin.with_file_name("lichen_backend");
+    let (_, le_client) = protocols::privileged_channel(&our_exe).await?;
     let mut client = proto_disks::disks_client::DisksClient::new(le_client);
     let disks = client.list_disks(proto_disks::ListDisksRequest {}).await?.into_inner();
     for disk in disks.disks {
@@ -71,7 +73,7 @@ fn main() -> Result<()> {
 
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
 
-    let rt = tokio::runtime::Builder::new_current_thread()
+    let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("Failed to build tokio runtime");
