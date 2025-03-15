@@ -9,13 +9,10 @@ name = "lichen_backend"
 path = "src/main.rs"
 
 [dependencies]
-prost.workspace = true
+protocols = { path = "../protocols" }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream.workspace = true
 tonic = { workspace = true }
 
 [lints]
 workspace = true
-
-[build-dependencies]
-tonic-build.workspace = true

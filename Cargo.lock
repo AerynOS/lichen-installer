@@ -178,11 +178,10 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
- "prost",
+ "protocols",
  "tokio",
  "tokio-stream",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -258,7 +257,6 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 name = "cli"
 version = "0.1.0"
 dependencies = [
- "backend",
  "cliclack",
  "color-eyre",
  "console",
@@ -1390,6 +1388,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
 dependencies = [
  "prost",
+]
+
+[[package]]
+name = "protocols"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]

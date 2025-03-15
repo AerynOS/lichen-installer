@@ -3,6 +3,7 @@ members = [
     "backend",
     "installer",
     "cli",
+    "protocols"
 ]
 default-members = [
     "backend",

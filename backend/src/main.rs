@@ -8,23 +8,20 @@ use tokio::net::UnixListener;
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 
-pub mod disks_proto {
-    #![allow(unused_qualifications)]
-    tonic::include_proto!("disks");
-}
+pub use protocols::proto_disks;
 
 #[derive(Debug, Default)]
 struct DiskService {}
 
 #[tonic::async_trait]
-impl disks_proto::disks_server::Disks for DiskService {
+impl proto_disks::disks_server::Disks for DiskService {
     async fn list_disks(
         &self,
-        request: tonic::Request<disks_proto::ListDisksRequest>,
-    ) -> Result<tonic::Response<disks_proto::ListDisksResponse>, tonic::Status> {
+        request: tonic::Request<proto_disks::ListDisksRequest>,
+    ) -> Result<tonic::Response<proto_disks::ListDisksResponse>, tonic::Status> {
         println!("Got a request: {:?}", request);
-        let response = disks_proto::ListDisksResponse {
-            disks: vec![disks_proto::Disk {
+        let response = proto_disks::ListDisksResponse {
+            disks: vec![proto_disks::Disk {
                 path: "/dev/sda".to_string(),
             }],
         };
@@ -48,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         // Add service implementations here with .add_service()
-        .add_service(disks_proto::disks_server::DisksServer::new(DiskService::default()))
+        .add_service(proto_disks::disks_server::DisksServer::new(DiskService::default()))
         .serve_with_incoming(uds_stream)
         .await?;
 

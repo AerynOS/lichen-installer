@@ -8,9 +8,6 @@ repository = "https://github.com/AerynOS/lichen-installer"
 name = "lichen_cli"
 path = "src/main.rs"
 
-[dev-dependencies]
-backend = { path = "../backend" }
-
 [build-dependencies]
 installer = { path = "../installer" }
 
