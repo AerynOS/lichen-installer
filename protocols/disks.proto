@@ -1,0 +1,27 @@
+// SPDX-FileCopyrightText: Copyright © 2025 Serpent OS Developers
+// SPDX-FileCopyrightText: Copyright © 2025 AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.aerynos.lichen.disks";
+option java_outer_classname = "DisksProto";
+
+package disks;
+
+service Disks {
+    rpc ListDisks(ListDisksRequest) returns (ListDisksResponse) {}
+}
+
+message ListDisksRequest {
+}
+
+message ListDisksResponse {
+    repeated Disk disks = 1;
+}
+
+message Disk {
+    string path = 1;
+}
