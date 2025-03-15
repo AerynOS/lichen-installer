@@ -1,0 +1,18 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+description = "Backend for the Lichen installer"
+
+[[bin]]
+name = "lichen_backend"
+path = "src/main.rs"
+
+[dependencies]
+tonic.workspace = true
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
