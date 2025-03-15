@@ -7,5 +7,7 @@ mod step;
 pub use step::*;
 mod icon;
 pub use icon::*;
+mod model;
+pub use model::*;
 
 pub use inventory;

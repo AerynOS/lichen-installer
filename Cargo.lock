@@ -506,6 +506,7 @@ name = "installer"
 version = "0.1.0"
 dependencies = [
  "inventory",
+ "provisioning",
  "tracing",
 ]
 

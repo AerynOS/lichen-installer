@@ -5,5 +5,4 @@
 
 pub mod frontend;
 pub mod logging;
-pub mod model;
 pub mod strategies;
