@@ -12,6 +12,8 @@ use miette::GraphicalReportHandler;
 use provisioning::{Provisioner, StrategyDefinition};
 use tracing::{error, info, trace};
 
+use crate::strategies;
+
 pub struct Installer {
     pub devices: Vec<BlockDevice>,
     pub strategies: Vec<StrategyDefinition>,
@@ -45,14 +47,10 @@ fn usable_disks() -> Result<Vec<BlockDevice>> {
     }
 }
 
-pub mod builtin_strategies {
-    pub const WHOLE_DISK: &str = include_str!("../../strategies/use_whole_disk.kdl");
-}
-
 impl Installer {
     // Create a new installer instance
     pub fn new() -> Result<Self> {
-        let strategies = Self::load_strategies("use_whole_disk", builtin_strategies::WHOLE_DISK)?;
+        let strategies = Self::load_strategies("use_whole_disk", strategies::WHOLE_DISK)?;
         let devices = usable_disks()?;
         Ok(Self { devices, strategies })
     }

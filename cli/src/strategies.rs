@@ -3,6 +3,4 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-pub mod installer;
-pub mod logging;
-pub mod strategies;
+pub const WHOLE_DISK: &str = include_str!("../../strategies/use_whole_disk.kdl");
