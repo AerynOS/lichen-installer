@@ -147,6 +147,7 @@ dependencies = [
  "color-eyre",
  "console",
  "disks",
+ "installer",
  "miette",
  "provisioning",
  "tracing",
@@ -498,6 +499,23 @@ dependencies = [
  "portable-atomic",
  "unicode-width 0.2.0",
  "web-time",
+]
+
+[[package]]
+name = "installer"
+version = "0.1.0"
+dependencies = [
+ "inventory",
+ "tracing",
+]
+
+[[package]]
+name = "inventory"
+version = "0.3.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab08d7cd2c5897f2c949e5383ea7c7db03fb19130ffcfbf7eda795137ae3cb83"
+dependencies = [
+ "rustversion",
 ]
 
 [[package]]
@@ -956,6 +974,12 @@ dependencies = [
  "linux-raw-sys 0.9.2",
  "windows-sys",
 ]
+
+[[package]]
+name = "rustversion"
+version = "1.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eded382c5f5f786b989652c49544c4877d9f015cc22e145a5ea8ea66c2921cd2"
 
 [[package]]
 name = "serde"
