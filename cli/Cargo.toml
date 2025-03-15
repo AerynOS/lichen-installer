@@ -12,6 +12,9 @@ path = "src/main.rs"
 installer = { path = "../installer" }
 
 [dependencies]
+protocols = { path = "../protocols" }
+tonic = { workspace = true }
+
 installer = { path = "../installer" }
 cliclack.workspace = true
 color-eyre = { workspace = true, features = ["issue-url"] }
@@ -22,6 +25,7 @@ provisioning.workspace = true
 tracing.workspace = true
 tracing-error.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tokio = { workspace = true, features = ["full"] }
 
 [lints]
 workspace = true

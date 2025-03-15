@@ -9,6 +9,11 @@ tonic-build.workspace = true
 [dependencies]
 prost.workspace = true
 tonic = { workspace = true }
+tokio.workspace = true
+tower.workspace = true
+hyper-util = { workspace = true, features = ["full"]}
+thiserror.workspace = true
+http.workspace = true
 
 [lints]
 workspace = true

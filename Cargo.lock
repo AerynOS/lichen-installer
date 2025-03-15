@@ -263,7 +263,10 @@ dependencies = [
  "disks",
  "installer",
  "miette",
+ "protocols",
  "provisioning",
+ "tokio",
+ "tonic",
  "tracing",
  "tracing-error",
  "tracing-subscriber",
@@ -1394,9 +1397,14 @@ dependencies = [
 name = "protocols"
 version = "0.1.0"
 dependencies = [
+ "http",
+ "hyper-util",
  "prost",
+ "thiserror 2.0.12",
+ "tokio",
  "tonic",
  "tonic-build",
+ "tower 0.5.2",
 ]
 
 [[package]]

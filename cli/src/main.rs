@@ -6,6 +6,7 @@
 use cli::{frontend::Interface, logging::CliclackLayer};
 use color_eyre::Result;
 use console::style;
+use protocols::proto_disks;
 use std::env;
 use std::fs::File;
 use tracing_error::ErrorLayer;
@@ -52,12 +53,31 @@ fn configure_tracing() -> Result<()> {
     Ok(())
 }
 
+async fn test_client() -> Result<(), Box<dyn std::error::Error>> {
+    let le_client = protocols::unix_channel("/tmp/service.sock").await?;
+    let mut client = proto_disks::disks_client::DisksClient::new(le_client);
+    let disks = client.list_disks(proto_disks::ListDisksRequest {}).await?.into_inner();
+    for disk in disks.disks {
+        tracing::info!("Disk on backend: {:?}", disk);
+    }
+
+    Ok(())
+}
+
 // Main entry point
 fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
+
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to build tokio runtime");
+
+    rt.block_on(async { test_client().await.unwrap() });
+
     let installer = Interface::new()?;
     installer.run()?;
     cliclack::outro_cancel("Installation cancelled")?;
