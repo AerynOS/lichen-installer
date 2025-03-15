@@ -8,11 +8,10 @@
 use cliclack::note;
 use color_eyre::{eyre::eyre, Result};
 use disks::BlockDevice;
+use installer::strategies;
 use miette::GraphicalReportHandler;
 use provisioning::{Provisioner, StrategyDefinition};
 use tracing::{error, info, trace};
-
-use crate::strategies;
 
 pub struct Interface {
     pub devices: Vec<BlockDevice>,
