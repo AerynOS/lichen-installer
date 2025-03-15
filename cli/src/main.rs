@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use cli::{installer::Installer, logging::CliclackLayer};
+use cli::{frontend::Interface, logging::CliclackLayer};
 use color_eyre::Result;
 use console::style;
 use std::env;
@@ -58,7 +58,7 @@ fn main() -> Result<()> {
     configure_tracing()?;
 
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
-    let installer = Installer::new()?;
+    let installer = Interface::new()?;
     installer.run()?;
     cliclack::outro_cancel("Installation cancelled")?;
 

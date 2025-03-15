@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-//! installer module
+//! Interface module
 
 use cliclack::note;
 use color_eyre::{eyre::eyre, Result};
@@ -14,7 +14,7 @@ use tracing::{error, info, trace};
 
 use crate::strategies;
 
-pub struct Installer {
+pub struct Interface {
     pub devices: Vec<BlockDevice>,
     pub strategies: Vec<StrategyDefinition>,
 }
@@ -47,8 +47,8 @@ fn usable_disks() -> Result<Vec<BlockDevice>> {
     }
 }
 
-impl Installer {
-    // Create a new installer instance
+impl Interface {
+    // Create a new Interface instance
     pub fn new() -> Result<Self> {
         let strategies = Self::load_strategies("use_whole_disk", strategies::WHOLE_DISK)?;
         let devices = usable_disks()?;

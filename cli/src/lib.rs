@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-pub mod installer;
+pub mod frontend;
 pub mod logging;
 pub mod model;
 pub mod strategies;
