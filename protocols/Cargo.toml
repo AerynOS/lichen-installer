@@ -14,8 +14,8 @@ tower.workspace = true
 hyper-util = { workspace = true, features = ["full"]}
 thiserror.workspace = true
 http.workspace = true
-nix = { workspace = true, features = ["fs", "process"] }
-command-fds = { workspace = true, features = ["tokio"] }
+nix = { workspace = true, features = ["fs", "process", "signal"] }
+command-fds.workspace = true
 uuid = { workspace = true, features = ["v4"] }
 tracing.workspace = true
 

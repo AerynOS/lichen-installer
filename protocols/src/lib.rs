@@ -10,7 +10,6 @@ pub mod privileged;
 use std::{path::Path, sync::Arc};
 
 use hyper_util::rt::TokioIo;
-use nix::unistd::Pid;
 use privileged::{PkexecExecutor, ServiceConnection};
 use thiserror::Error;
 use tokio::net::UnixStream;
@@ -50,21 +49,22 @@ pub async fn unix_channel(whence: &str) -> Result<Channel, Error> {
     Ok(channel)
 }
 
-pub async fn privileged_channel(executable: impl AsRef<Path>) -> Result<(Pid, Channel), Error> {
+pub fn create_service_connection(executable: impl AsRef<Path>) -> Result<Arc<ServiceConnection>, Error> {
     let path = executable.as_ref().to_string_lossy().to_string();
-    let encoded_uri = Uri::builder()
-        .scheme("http")
-        .authority("localhost:50051")
-        .path_and_query(path.clone())
-        .build()?;
-
-    // Keep the whole ServiceConnection alive
     let connection = Arc::new(
         ServiceConnection::new::<PkexecExecutor>(&path, &[])
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?,
     );
     connection.socket.set_nonblocking(true)?;
-    let pid = connection._child;
+    Ok(connection)
+}
+
+pub async fn service_connection_to_channel(connection: Arc<ServiceConnection>, path: String) -> Result<Channel, Error> {
+    let encoded_uri = Uri::builder()
+        .scheme("http")
+        .authority("localhost:50051")
+        .path_and_query(path)
+        .build()?;
 
     let connection_clone = Arc::clone(&connection);
     let channel = Endpoint::from(encoded_uri)
@@ -78,5 +78,5 @@ pub async fn privileged_channel(executable: impl AsRef<Path>) -> Result<(Pid, Ch
         }))
         .await?;
 
-    Ok((pid, channel))
+    Ok(channel)
 }

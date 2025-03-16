@@ -61,7 +61,7 @@ impl SocketExecutor for PkexecExecutor {
     }
 
     fn parent_fd(&self) -> i32 {
-        3
+        4
     }
 
     fn command(&self, executable: &str, args: &[&str]) -> Command {
@@ -110,14 +110,17 @@ impl ServiceConnection {
         let unix_socket = UnixListener::bind_addr(&socket_addr)?;
         unix_socket.set_nonblocking(true)?;
 
-        tracing::trace!("🔌 setting server address to: @{:?}", identity.0);
-
         let exec = T::default();
 
         let mappings: Vec<FdMapping> = vec![FdMapping {
             parent_fd: unix_socket.into(),
             child_fd: exec.child_fd(),
         }];
+
+        // Emit mappings to log
+        for mapping in &mappings {
+            tracing::warn!("🔌 mapping: {:?}", mapping);
+        }
 
         match unsafe { nix::unistd::fork() }? {
             nix::unistd::ForkResult::Parent { child } => {

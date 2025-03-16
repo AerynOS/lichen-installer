@@ -6,9 +6,9 @@
 use cli::{frontend::Interface, logging::CliclackLayer};
 use color_eyre::Result;
 use console::style;
-use protocols::proto_disks;
-use std::env;
+use protocols::{privileged::ServiceConnection, proto_disks};
 use std::fs::File;
+use std::{env, sync::Arc};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
@@ -53,16 +53,19 @@ fn configure_tracing() -> Result<()> {
     Ok(())
 }
 
-async fn test_client() -> Result<(), Box<dyn std::error::Error>> {
-    let our_bin = env::current_exe()?;
-    let our_exe = our_bin.with_file_name("lichen_backend");
-    let (_, le_client) = protocols::privileged_channel(&our_exe).await?;
-    let mut client = proto_disks::disks_client::DisksClient::new(le_client);
+async fn test_client(connection: Arc<ServiceConnection>, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let channel = protocols::service_connection_to_channel(connection, path.to_string()).await?;
+    let mut client = proto_disks::disks_client::DisksClient::new(channel);
     let disks = client.list_disks(proto_disks::ListDisksRequest {}).await?.into_inner();
     for disk in disks.disks {
         tracing::info!("Disk on backend: {:?}", disk);
     }
+    Ok(())
+}
 
+fn run_installer() -> Result<()> {
+    let installer = Interface::new()?;
+    installer.run()?;
     Ok(())
 }
 
@@ -71,6 +74,11 @@ fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
+    let our_bin = env::current_exe()?;
+    let our_exe = our_bin.with_file_name("lichen_backend");
+    let path = our_exe.to_string_lossy().to_string();
+    let connection = protocols::create_service_connection(&our_exe)?;
+
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -78,11 +86,7 @@ fn main() -> Result<()> {
         .build()
         .expect("Failed to build tokio runtime");
 
-    rt.block_on(async { test_client().await.unwrap() });
+    rt.block_on(async { test_client(connection.clone(), &path).await.unwrap() });
 
-    let installer = Interface::new()?;
-    installer.run()?;
-    cliclack::outro_cancel("Installation cancelled")?;
-
-    Ok(())
+    run_installer()
 }

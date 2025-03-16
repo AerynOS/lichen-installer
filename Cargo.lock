@@ -178,10 +178,16 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
+ "color-eyre",
+ "console",
+ "nix 0.29.0",
  "protocols",
  "tokio",
  "tokio-stream",
  "tonic",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -263,6 +269,7 @@ dependencies = [
  "disks",
  "installer",
  "miette",
+ "nix 0.29.0",
  "protocols",
  "provisioning",
  "tokio",
@@ -328,7 +335,6 @@ checksum = "7bb11bd1378bf3731b182997b40cefe00aba6a6cc74042c8318c1b271d3badf7"
 dependencies = [
  "nix 0.27.1",
  "thiserror 1.0.69",
- "tokio",
 ]
 
 [[package]]

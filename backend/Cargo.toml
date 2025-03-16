@@ -3,16 +3,24 @@ name = "backend"
 version = "0.1.0"
 edition = "2021"
 description = "Backend for the Lichen installer"
+repository = "https://github.com/AerynOS/lichen-installer"
 
 [[bin]]
 name = "lichen_backend"
 path = "src/main.rs"
 
 [dependencies]
+nix.workspace = true
 protocols = { path = "../protocols" }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream.workspace = true
 tonic = { workspace = true }
+
+color-eyre = { workspace = true, features = ["issue-url"] }
+console.workspace = true
+tracing.workspace = true
+tracing-error.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [lints]
 workspace = true
