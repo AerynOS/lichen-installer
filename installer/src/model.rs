@@ -3,7 +3,6 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-mod disk;
 mod region;
 
 /// Installation settings
@@ -13,7 +12,4 @@ mod region;
 pub struct Model {
     /// Region specific installation settings
     pub region: region::Model,
-
-    /// Disk configuration
-    pub disk: disk::Model,
 }

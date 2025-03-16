@@ -5,7 +5,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-provisioning.workspace = true
+protocols = { path = "../protocols" }
 tracing.workspace = true
 inventory.workspace = true
 
