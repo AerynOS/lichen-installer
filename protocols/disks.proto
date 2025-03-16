@@ -48,9 +48,9 @@ message Disk {
     // Path to the device in /dev
     string device = 3;
     // Optional disk model name
-    string model = 4;
+    optional string model = 4;
     // Optional disk vendor name
-    string vendor = 5;
+    optional string vendor = 5;
     // Partitions
     repeated Partition partitions = 6;
 }

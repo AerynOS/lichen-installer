@@ -35,8 +35,8 @@ impl proto_disks::disks_server::Disks for DiskService {
                     name: device.name().to_owned(),
                     sectors: device.sectors(),
                     device: device.device().to_string_lossy().to_string(),
-                    model: disk.model().map(|m| m.to_owned()).unwrap_or_default(),
-                    vendor: disk.vendor().map(|v| v.to_owned()).unwrap_or_default(),
+                    model: disk.model().map(|m| m.to_owned()),
+                    vendor: disk.vendor().map(|v| v.to_owned()),
                     partitions: device
                         .partitions()
                         .iter()
