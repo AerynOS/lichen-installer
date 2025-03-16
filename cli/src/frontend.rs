@@ -9,7 +9,6 @@ use color_eyre::Result;
 use console::style;
 use installer::Installer;
 use protocols::proto_disks::{Disk, ListDisksRequest};
-use tracing::info;
 
 pub struct Frontend {
     pub installer: Installer,
@@ -21,10 +20,23 @@ impl Frontend {
         Ok(Self { installer })
     }
 
-    // Render a disk ugly-style
+    // Render a disk with improved styling
     fn render_disk(disk: &Disk) -> String {
-        info!("Rendering disk: {:?}", disk);
-        format!("{}: {}", disk.device, disk.name)
+        let display_name = match disk.model {
+            Some(ref model) => model.clone(),
+            None => "Unknown".to_string(),
+        };
+        let display_vendor = match disk.vendor {
+            Some(ref vendor) => vendor.clone(),
+            None => "Unknown".to_string(),
+        };
+        format!(
+            "{} {} • {} {}",
+            style(&disk.device).cyan().bold(),
+            style(&disk.display_size).yellow(),
+            style(&display_vendor).dim(),
+            style(&display_name).green()
+        )
     }
 
     // Run the CLI installer
