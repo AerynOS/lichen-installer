@@ -1,11 +1,11 @@
 # lichen
 
-A heavily in-development, experimental, and early days installer for Serpent OS to meet a deadline.
+A heavily in-development, experimental, and early days installer for AerynOS.
 
 ## Build & Test
 
     cargo build
-    sudo ./target/debug/lichen
+    cargo run -p cli
 
 To quit the installer, press `ESC` to switch to command mode, then press `q`.
 
