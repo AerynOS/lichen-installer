@@ -3,30 +3,45 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-//! Interface module
+//! Frontend module
 
 use color_eyre::Result;
-use protocols::proto_disks::{disks_client::DisksClient, Disk, ListDisksRequest};
-use tonic::transport::Channel;
+use console::style;
+use installer::Installer;
+use protocols::proto_disks::{Disk, ListDisksRequest};
 
-pub struct Interface {
-    pub disks: DisksClient<Channel>,
+pub struct Frontend {
+    pub installer: Installer,
 }
 
-impl Interface {
-    // Create a new Interface instance
-    pub fn new(disks: DisksClient<Channel>) -> Result<Self> {
-        Ok(Self { disks })
+impl Frontend {
+    // Create a new Frontend instance
+    pub fn new(installer: Installer) -> Result<Self> {
+        Ok(Self { installer })
     }
 
+    // Render a disk ugly-style
     fn render_disk(disk: &Disk) -> String {
         format!("{}: {}", disk.device, disk.name)
     }
 
-    pub async fn run(&mut self) -> Result<()> {
-        let disks = self.disks.list_disks(ListDisksRequest {}).await?.into_inner();
+    // Run the CLI installer
+    pub async fn run(&self) -> Result<()> {
+        cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
+
+        // Grab the list of disks
+        let mut client = self.installer.disks().await?;
+        let disks = client.list_disks(ListDisksRequest {}).await?.into_inner();
+
+        // Ask the user to select a disk
+        let _ = self.ask_for_disk(&disks.disks).await?;
+
+        Ok(())
+    }
+
+    // Ask the user to select a disk
+    async fn ask_for_disk(&self, disks: &[Disk]) -> Result<usize> {
         let renderable_devices = disks
-            .disks
             .iter()
             .enumerate()
             .map(|(idx, d)| (idx, Self::render_disk(d), "".to_string()))
@@ -36,6 +51,6 @@ impl Interface {
             .items(&renderable_devices)
             .interact()?;
 
-        Ok(())
+        Ok(_index)
     }
 }

@@ -3,10 +3,9 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use cli::{frontend::Interface, logging::CliclackLayer};
+use cli::{frontend::Frontend, logging::CliclackLayer};
 use color_eyre::Result;
-use console::style;
-use protocols::proto_disks;
+use installer::Installer;
 use std::env;
 use std::fs::File;
 use tracing_error::ErrorLayer;
@@ -59,16 +58,8 @@ async fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
-    let our_bin = env::current_exe()?;
-    let our_exe = our_bin.with_file_name("lichen_backend");
-    let path = our_exe.to_string_lossy().to_string();
-    let connection = protocols::create_service_connection(&our_exe)?;
-
-    cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
-
-    let channel = protocols::service_connection_to_channel(connection, path.to_string()).await?;
-    let client = proto_disks::disks_client::DisksClient::new(channel);
-    let mut iface = Interface::new(client)?;
+    let installer = Installer::builder().build().await?;
+    let iface = Frontend::new(installer)?;
     iface.run().await?;
     Ok(())
 }
