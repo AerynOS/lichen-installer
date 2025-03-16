@@ -4,8 +4,14 @@ A heavily in-development, experimental, and early days installer for AerynOS.
 
 ## Build & Test
 
-    cargo build
-    cargo run -p cli
+```bash
+
+# Ensure `lichen-backend` also gets built.
+cargo build
+
+# Run the CLI frontend
+cargo run -p cli
+```
 
 To quit the installer, press `ESC` to switch to command mode, then press `q`.
 
