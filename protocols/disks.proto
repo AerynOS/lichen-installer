@@ -40,6 +40,8 @@ message Partition {
     string node = 6;
     // Path to the partition device in /dev
     string device = 7;
+    // Display size of the partition
+    string display_size = 8;
 }
 
 // Kind of disk device
@@ -69,4 +71,6 @@ message Disk {
     DiskKind kind = 7;
     // Optional image path for loopback devices
     optional string image_path = 8;
+    // Display size of the disk
+    string display_size = 9;
 }

@@ -26,6 +26,8 @@ where
             size: partition.size,
             node: partition.node.to_string_lossy().to_string(),
             device: partition.device.to_string_lossy().to_string(),
+            // TODO: Fix global assumption re 512 byte sectors
+            display_size: disks::format_size(partition.size * 512),
         }
     }
 }
@@ -55,6 +57,7 @@ where
                     disks::Disk::Virtual(_) => proto_disks::DiskKind::Virtual as i32,
                     disks::Disk::Mock(_) => proto_disks::DiskKind::Unknown as i32,
                 },
+                display_size: disks::format_size(device.size()),
                 image_path: None,
             },
             BlockDevice::Loopback(ref loopback) => proto_disks::Disk {
@@ -72,6 +75,7 @@ where
                     .collect(),
                 image_path: loopback.file_path().map(|p| p.to_string_lossy().to_string()),
                 kind: proto_disks::DiskKind::Loopback as i32,
+                display_size: disks::format_size(device.size()),
             },
         }
     }

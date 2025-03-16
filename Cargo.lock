@@ -286,7 +286,7 @@ dependencies = [
 [[package]]
 name = "disks"
 version = "0.1.0"
-source = "git+https://github.com/AerynOS/disks-rs.git#5a7a7d1561bf16b4a92cfff0ae26773c5fbdaed6"
+source = "git+https://github.com/AerynOS/disks-rs.git#7299da936e0a187ff0aba0e6c9370ee92ba960b4"
 dependencies = [
  "log",
  "regex",
