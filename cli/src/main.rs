@@ -6,9 +6,9 @@
 use cli::{frontend::Interface, logging::CliclackLayer};
 use color_eyre::Result;
 use console::style;
-use protocols::{privileged::ServiceConnection, proto_disks};
+use protocols::proto_disks;
+use std::env;
 use std::fs::File;
-use std::{env, sync::Arc};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
@@ -53,24 +53,9 @@ fn configure_tracing() -> Result<()> {
     Ok(())
 }
 
-async fn test_client(connection: Arc<ServiceConnection>, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let channel = protocols::service_connection_to_channel(connection, path.to_string()).await?;
-    let mut client = proto_disks::disks_client::DisksClient::new(channel);
-    let disks = client.list_disks(proto_disks::ListDisksRequest {}).await?.into_inner();
-    for disk in disks.disks {
-        tracing::info!("Disk on backend: {:?}", disk);
-    }
-    Ok(())
-}
-
-fn run_installer() -> Result<()> {
-    let installer = Interface::new()?;
-    installer.run()?;
-    Ok(())
-}
-
 // Main entry point
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
@@ -81,12 +66,9 @@ fn main() -> Result<()> {
 
     cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
 
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to build tokio runtime");
-
-    rt.block_on(async { test_client(connection.clone(), &path).await.unwrap() });
-
-    run_installer()
+    let channel = protocols::service_connection_to_channel(connection, path.to_string()).await?;
+    let client = proto_disks::disks_client::DisksClient::new(channel);
+    let mut iface = Interface::new(client)?;
+    iface.run().await?;
+    Ok(())
 }
