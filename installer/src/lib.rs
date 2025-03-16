@@ -6,10 +6,8 @@
 mod step;
 use std::{collections::BTreeMap, env, path::Path, sync::Arc};
 
-use protocols::{
-    privileged::ServiceConnection,
-    proto_disks::{disks_client},
-};
+use protocols::privileged::ServiceConnection;
+use protocols::proto_disks::disks_client;
 pub use step::*;
 mod icon;
 pub use icon::*;
