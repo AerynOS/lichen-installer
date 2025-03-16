@@ -27,13 +27,23 @@ impl disks_server::Disks for Service {
     /// A Response containing ListDisksResponse with disk information, or a tonic::Status error
     async fn list_disks(
         &self,
-        _request: Request<ListDisksRequest>,
+        request: Request<ListDisksRequest>,
     ) -> Result<Response<ListDisksResponse>, tonic::Status> {
         // Discover all block devices on the system
         let devices = BlockDevice::discover()?;
 
         // Filter and transform block devices into disk information
-        let disks = devices.iter().map(Into::into).collect();
+        let disks = devices
+            .iter()
+            .filter(|device| {
+                if request.get_ref().exclude_loopback {
+                    !matches!(device, BlockDevice::Loopback(_))
+                } else {
+                    true
+                }
+            })
+            .map(Into::into)
+            .collect();
 
         let response = ListDisksResponse { disks };
         Ok(Response::new(response))

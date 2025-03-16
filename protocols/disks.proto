@@ -16,6 +16,8 @@ service Disks {
 }
 
 message ListDisksRequest {
+    // Filter out loopback devices
+    bool exclude_loopback = 1;
 }
 
 message ListDisksResponse {
@@ -40,6 +42,16 @@ message Partition {
     string device = 7;
 }
 
+// Kind of disk device
+enum DiskKind {
+    DISK_KIND_UNKNOWN = 0;
+    DISK_KIND_LOOPBACK = 1;
+    DISK_KIND_SCSI = 2;
+    DISK_KIND_VIRTUAL = 3;
+    DISK_KIND_NVME = 4;
+    DISK_KIND_MMC = 5;
+}
+
 message Disk {
     // Device name (e.g. sda, nvme0n1)
     string name = 1;
@@ -53,4 +65,8 @@ message Disk {
     optional string vendor = 5;
     // Partitions
     repeated Partition partitions = 6;
+    // Kind of disk device
+    DiskKind kind = 7;
+    // Optional image path for loopback devices
+    optional string image_path = 8;
 }

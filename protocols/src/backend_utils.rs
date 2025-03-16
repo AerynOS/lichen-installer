@@ -48,6 +48,14 @@ where
                 model: disk.model().map(|m| m.to_owned()),
                 vendor: disk.vendor().map(|v| v.to_owned()),
                 partitions: device.partitions().iter().map(Into::into).collect(),
+                kind: match **disk {
+                    disks::Disk::Scsi(_) => proto_disks::DiskKind::Scsi as i32,
+                    disks::Disk::Mmc(_) => proto_disks::DiskKind::Mmc as i32,
+                    disks::Disk::Nvme(_) => proto_disks::DiskKind::Nvme as i32,
+                    disks::Disk::Virtual(_) => proto_disks::DiskKind::Virtual as i32,
+                    disks::Disk::Mock(_) => proto_disks::DiskKind::Unknown as i32,
+                },
+                image_path: None,
             },
             BlockDevice::Loopback(ref loopback) => proto_disks::Disk {
                 name: device.name().to_owned(),
@@ -62,6 +70,8 @@ where
                     .iter()
                     .map(Into::into)
                     .collect(),
+                image_path: loopback.file_path().map(|p| p.to_string_lossy().to_string()),
+                kind: proto_disks::DiskKind::Loopback as i32,
             },
         }
     }

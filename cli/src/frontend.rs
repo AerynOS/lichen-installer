@@ -9,6 +9,7 @@ use color_eyre::Result;
 use console::style;
 use installer::Installer;
 use protocols::proto_disks::{Disk, ListDisksRequest};
+use tracing::info;
 
 pub struct Frontend {
     pub installer: Installer,
@@ -22,6 +23,7 @@ impl Frontend {
 
     // Render a disk ugly-style
     fn render_disk(disk: &Disk) -> String {
+        info!("Rendering disk: {:?}", disk);
         format!("{}: {}", disk.device, disk.name)
     }
 
@@ -31,7 +33,10 @@ impl Frontend {
 
         // Grab the list of disks
         let mut client = self.installer.disks().await?;
-        let disks = client.list_disks(ListDisksRequest {}).await?.into_inner();
+        let disks = client
+            .list_disks(ListDisksRequest { exclude_loopback: true })
+            .await?
+            .into_inner();
 
         // Ask the user to select a disk
         let _ = self.ask_for_disk(&disks.disks).await?;
