@@ -19,5 +19,10 @@ command-fds.workspace = true
 uuid = { workspace = true, features = ["v4"] }
 tracing.workspace = true
 
+disks = { workspace = true, optional = true }
+
+[features]
+backend-utils = ["dep:disks"]
+
 [lints]
 workspace = true

@@ -7,6 +7,9 @@
 
 pub mod privileged;
 
+#[cfg(feature = "backend-utils")]
+pub mod backend_utils;
+
 use std::{path::Path, sync::Arc};
 
 use hyper_util::rt::TokioIo;

@@ -1117,6 +1117,7 @@ name = "protocols"
 version = "0.1.0"
 dependencies = [
  "command-fds",
+ "disks",
  "http",
  "hyper-util",
  "nix 0.29.0",

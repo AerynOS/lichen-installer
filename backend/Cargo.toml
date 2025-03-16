@@ -12,7 +12,7 @@ path = "src/main.rs"
 [dependencies]
 disks.workspace = true
 nix.workspace = true
-protocols = { path = "../protocols" }
+protocols = { path = "../protocols", features = ["backend-utils"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream.workspace = true
 tonic = { workspace = true }

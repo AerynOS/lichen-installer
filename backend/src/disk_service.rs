@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use disks::BlockDevice;
-use protocols::proto_disks::{self, disks_server, ListDisksRequest, ListDisksResponse};
+use protocols::proto_disks::{disks_server, ListDisksRequest, ListDisksResponse};
 use tonic::{Request, Response};
 
 /// Service represents the disk management service implementation
@@ -33,32 +33,7 @@ impl disks_server::Disks for Service {
         let devices = BlockDevice::discover()?;
 
         // Filter and transform block devices into disk information
-        let disks = devices
-            .iter()
-            .filter_map(|device| match device {
-                BlockDevice::Disk(disk) => Some(proto_disks::Disk {
-                    name: device.name().to_owned(),
-                    sectors: device.sectors(),
-                    device: device.device().to_string_lossy().to_string(),
-                    model: disk.model().map(|m| m.to_owned()),
-                    vendor: disk.vendor().map(|v| v.to_owned()),
-                    partitions: device
-                        .partitions()
-                        .iter()
-                        .map(|partition| proto_disks::Partition {
-                            name: partition.name.clone(),
-                            number: partition.number,
-                            start: partition.start,
-                            end: partition.end,
-                            size: partition.size,
-                            node: partition.node.to_string_lossy().to_string(),
-                            device: partition.device.to_string_lossy().to_string(),
-                        })
-                        .collect(),
-                }),
-                _ => None,
-            })
-            .collect();
+        let disks = devices.iter().map(Into::into).collect();
 
         let response = ListDisksResponse { disks };
         Ok(Response::new(response))
