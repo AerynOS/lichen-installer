@@ -6,7 +6,10 @@
 mod step;
 use std::{collections::BTreeMap, env, path::Path, sync::Arc};
 
-use protocols::{privileged::ServiceConnection, proto_disks};
+use protocols::{
+    privileged::ServiceConnection,
+    proto_disks::{disks_client},
+};
 pub use step::*;
 mod icon;
 pub use icon::*;
@@ -22,6 +25,7 @@ pub struct Installer {
     steps: BTreeMap<String, Box<dyn Step>>,
     connection: Arc<ServiceConnection>,
     backend_path: String,
+    active_step: Option<String>,
 }
 
 /// Builder for Installer
@@ -82,6 +86,7 @@ impl InstallerBuilder {
             backend_path: str_path,
             steps,
             connection,
+            active_step: None,
         })
     }
 }
@@ -92,11 +97,16 @@ impl Installer {
         InstallerBuilder::new()
     }
 
+    /// Get the active step ID
+    pub fn active_step(&self) -> Option<&str> {
+        self.active_step.as_deref()
+    }
+
     /// Grab a disks RPC client
-    pub async fn disks(&self) -> Result<proto_disks::disks_client::DisksClient<Channel>, Error> {
+    pub async fn disks(&self) -> Result<disks_client::DisksClient<Channel>, Error> {
         let channel =
             protocols::service_connection_to_channel(self.connection.clone(), self.backend_path.clone()).await?;
-        let client = proto_disks::disks_client::DisksClient::new(channel);
+        let client = disks_client::DisksClient::new(channel);
         Ok(client)
     }
 }
