@@ -5,6 +5,7 @@
 
 use std::{env, fs::File};
 
+use disks::BlockDevice;
 use protocols::privileged::{service_init, ServiceListener};
 use tokio::net::UnixListener;
 use tokio::signal::unix::{signal, SignalKind};
@@ -24,14 +25,37 @@ struct DiskService {}
 impl proto_disks::disks_server::Disks for DiskService {
     async fn list_disks(
         &self,
-        request: tonic::Request<proto_disks::ListDisksRequest>,
+        _request: tonic::Request<proto_disks::ListDisksRequest>,
     ) -> Result<tonic::Response<proto_disks::ListDisksResponse>, tonic::Status> {
-        println!("Got a request: {:?}", request);
-        let response = proto_disks::ListDisksResponse {
-            disks: vec![proto_disks::Disk {
-                path: "/dev/sda".to_string(),
-            }],
-        };
+        let devices = BlockDevice::discover()?;
+        let disks = devices
+            .iter()
+            .filter_map(|device| match device {
+                BlockDevice::Disk(disk) => Some(proto_disks::Disk {
+                    name: device.name().to_owned(),
+                    sectors: device.sectors(),
+                    device: device.device().to_string_lossy().to_string(),
+                    model: disk.model().map(|m| m.to_owned()).unwrap_or_default(),
+                    vendor: disk.vendor().map(|v| v.to_owned()).unwrap_or_default(),
+                    partitions: device
+                        .partitions()
+                        .iter()
+                        .map(|partition| proto_disks::Partition {
+                            name: partition.name.clone(),
+                            number: partition.number,
+                            start: partition.start,
+                            end: partition.end,
+                            size: partition.size,
+                            node: partition.node.to_string_lossy().to_string(),
+                            device: partition.device.to_string_lossy().to_string(),
+                        })
+                        .collect(),
+                }),
+                _ => None,
+            })
+            .collect();
+
+        let response = proto_disks::ListDisksResponse { disks };
         Ok(tonic::Response::new(response))
     }
 }

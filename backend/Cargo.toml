@@ -10,6 +10,7 @@ name = "lichen_backend"
 path = "src/main.rs"
 
 [dependencies]
+disks.workspace = true
 nix.workspace = true
 protocols = { path = "../protocols" }
 tokio = { workspace = true, features = ["full"] }

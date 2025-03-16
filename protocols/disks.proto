@@ -22,6 +22,35 @@ message ListDisksResponse {
     repeated Disk disks = 1;
 }
 
+// Represents a partition on a disk device
+message Partition {
+    // Name of the partition
+    string name = 1;
+    // Partition number on the disk
+    uint32 number = 2;
+    // Starting sector of the partition
+    uint64 start = 3;
+    // Ending sector of the partition
+    uint64 end = 4;
+    // Size of partition in sectors
+    uint64 size = 5;
+    // Path to the partition node in sysfs
+    string node = 6;
+    // Path to the partition device in /dev
+    string device = 7;
+}
+
 message Disk {
-    string path = 1;
+    // Device name (e.g. sda, nvme0n1)
+    string name = 1;
+    // Total number of sectors on the disk
+    uint64 sectors = 2;
+    // Path to the device in /dev
+    string device = 3;
+    // Optional disk model name
+    string model = 4;
+    // Optional disk vendor name
+    string vendor = 5;
+    // Partitions
+    repeated Partition partitions = 6;
 }
