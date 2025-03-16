@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 mod step;
-use std::{env, path::Path, sync::Arc};
+use std::{collections::BTreeMap, env, path::Path, sync::Arc};
 
 use protocols::{privileged::ServiceConnection, proto_disks};
 pub use step::*;
@@ -19,7 +19,7 @@ use tonic::transport::Channel;
 
 /// The installer workflow / mechanism
 pub struct Installer {
-    steps: Vec<Box<dyn Step>>,
+    steps: BTreeMap<String, Box<dyn Step>>,
     connection: Arc<ServiceConnection>,
     backend_path: String,
 }
@@ -72,10 +72,10 @@ impl InstallerBuilder {
         let connection = protocols::create_service_connection(&backend_path)?;
 
         // Here we would load the step plugins based on their IDs
-        let mut steps = Vec::new();
+        let mut steps = BTreeMap::new();
         for step_id in self.step_ids {
-            let step = get_step(&step_id).ok_or_else(|| Error::StepLoadError(step_id))?;
-            steps.push(step);
+            let step = get_step(&step_id).ok_or_else(|| Error::StepLoadError(step_id.clone()))?;
+            steps.insert(step_id, step);
         }
 
         Ok(Installer {
