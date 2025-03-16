@@ -3,9 +3,14 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+//! The disk service backend
+//!
+//! This service handles disk management operations and provides a gRPC interface
+//! for clients to interact with disk devices.
+
 use std::{env, fs::File};
 
-use disks::BlockDevice;
+use backend::disk_service;
 use protocols::privileged::{service_init, ServiceListener};
 use tokio::net::UnixListener;
 use tokio::signal::unix::{signal, SignalKind};
@@ -18,49 +23,9 @@ use tracing::info;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
-#[derive(Debug, Default)]
-struct DiskService {}
-
-#[tonic::async_trait]
-impl proto_disks::disks_server::Disks for DiskService {
-    async fn list_disks(
-        &self,
-        _request: tonic::Request<proto_disks::ListDisksRequest>,
-    ) -> Result<tonic::Response<proto_disks::ListDisksResponse>, tonic::Status> {
-        let devices = BlockDevice::discover()?;
-        let disks = devices
-            .iter()
-            .filter_map(|device| match device {
-                BlockDevice::Disk(disk) => Some(proto_disks::Disk {
-                    name: device.name().to_owned(),
-                    sectors: device.sectors(),
-                    device: device.device().to_string_lossy().to_string(),
-                    model: disk.model().map(|m| m.to_owned()),
-                    vendor: disk.vendor().map(|v| v.to_owned()),
-                    partitions: device
-                        .partitions()
-                        .iter()
-                        .map(|partition| proto_disks::Partition {
-                            name: partition.name.clone(),
-                            number: partition.number,
-                            start: partition.start,
-                            end: partition.end,
-                            size: partition.size,
-                            node: partition.node.to_string_lossy().to_string(),
-                            device: partition.device.to_string_lossy().to_string(),
-                        })
-                        .collect(),
-                }),
-                _ => None,
-            })
-            .collect();
-
-        let response = proto_disks::ListDisksResponse { disks };
-        Ok(tonic::Response::new(response))
-    }
-}
-
-// Setup eyre for better error handling
+/// Configures color-eyre for enhanced error handling and reporting
+///
+/// Sets up error hooks with metadata about the environment and package version
 fn setup_eyre() {
     console::set_colors_enabled(true);
     color_eyre::config::HookBuilder::default()
@@ -73,8 +38,10 @@ fn setup_eyre() {
         .unwrap();
 }
 
-// Configure tracing for logging
-// Now we dump to both output and file
+/// Configures the tracing system for application logging
+///
+/// Creates a log file at "backend.log" and sets up formatting and filtering options
+/// for the tracing subscriber
 fn configure_tracing() -> Result<()> {
     let file = File::create("backend.log")?;
     let file_format = Format::default()
@@ -100,6 +67,10 @@ fn configure_tracing() -> Result<()> {
     Ok(())
 }
 
+/// Handles termination signals (SIGTERM and SIGINT)
+///
+/// Waits for either signal and returns when one is received, triggering
+/// graceful shutdown
 async fn signal_handler() {
     let mut sigterm = signal(SignalKind::terminate()).unwrap();
     let mut sigint = signal(SignalKind::interrupt()).unwrap();
@@ -110,6 +81,11 @@ async fn signal_handler() {
     };
 }
 
+/// Main entry point for the disk service
+///
+/// Initializes the service, sets up error handling and logging, and starts
+/// the gRPC server with the disk service implementation. Handles graceful
+/// shutdown on termination signals.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     service_init()?;
@@ -123,8 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let uds_stream = UnixListenerStream::new(as_tokio);
 
     Server::builder()
-        // Add service implementations here with .add_service()
-        .add_service(proto_disks::disks_server::DisksServer::new(DiskService::default()))
+        .add_service(disk_service::service())
         .serve_with_incoming_shutdown(uds_stream, signal_handler())
         .await?;
 
