@@ -11,5 +11,3 @@ mod model;
 pub use model::*;
 
 pub use inventory;
-
-pub mod strategies;
