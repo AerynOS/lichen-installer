@@ -10,7 +10,7 @@ use std::{
     path::Path,
 };
 
-use protocols::proto_backend::{backend_client, BackendShutdownRequest};
+use protocols::proto_backend::{backend_client, BackendShutdownRequest, BackendStatusRequest};
 use protocols::proto_disks::disks_client;
 pub use step::*;
 mod icon;
@@ -99,10 +99,6 @@ impl InstallerBuilder {
 
     /// Build the installer
     pub async fn build(self) -> Result<Installer, Error> {
-        //let backend_path = self.backend_path.ok_or_else(|| Error::MissingBackendPath)?;
-        //let str_path = backend_path.to_string_lossy().to_string();
-        //let connection = protocols::create_service_connection(&backend_path)?;
-
         // Here we would load the step plugins based on their IDs
         let mut steps = BTreeMap::new();
         for step_id in &self.step_ids {
@@ -116,7 +112,6 @@ impl InstallerBuilder {
             available_steps.insert(first_step.clone());
         }
 
-        //let channel = protocols::service_connection_to_channel(connection, str_path.clone()).await?;
         let channel = protocols::unix_channel("/run/lichen.sock").await?;
 
         let installer = Installer {
@@ -125,6 +120,10 @@ impl InstallerBuilder {
             active_step: self.active_step,
             available_steps,
         };
+
+        // Ensure the backend is running
+        let mut backend = installer.backend().await?;
+        let _ = backend.status(BackendStatusRequest {}).await?;
 
         Ok(installer)
     }
