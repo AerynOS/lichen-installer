@@ -13,6 +13,7 @@ package backend;
 
 service Backend {
     rpc Status(BackendStatusRequest) returns (BackendStatusResponse) {}
+    rpc Shutdown(BackendShutdownRequest) returns (BackendShutdownResponse) {}
 }
 
 message BackendStatusRequest {
@@ -21,4 +22,12 @@ message BackendStatusRequest {
 message BackendStatusResponse {
     // System uptime in seconds
     uint64 uptime = 1;
+}
+
+message BackendShutdownRequest {
+}
+
+message BackendShutdownResponse {
+    // True if the system is shutting down
+    bool shutting_down = 1;
 }

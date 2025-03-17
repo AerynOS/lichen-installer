@@ -10,7 +10,7 @@ use std::{
     path::Path,
 };
 
-use protocols::proto_backend::{backend_client, BackendStatusRequest};
+use protocols::proto_backend::{backend_client, BackendShutdownRequest};
 use protocols::proto_disks::disks_client;
 pub use step::*;
 mod icon;
@@ -21,7 +21,6 @@ pub use model::*;
 pub use inventory;
 use thiserror::Error;
 use tonic::transport::Channel;
-use tracing::trace;
 
 /// The installer workflow / mechanism
 pub struct Installer {
@@ -100,9 +99,9 @@ impl InstallerBuilder {
 
     /// Build the installer
     pub async fn build(self) -> Result<Installer, Error> {
-        let backend_path = self.backend_path.ok_or_else(|| Error::MissingBackendPath)?;
-        let str_path = backend_path.to_string_lossy().to_string();
-        let connection = protocols::create_service_connection(&backend_path)?;
+        //let backend_path = self.backend_path.ok_or_else(|| Error::MissingBackendPath)?;
+        //let str_path = backend_path.to_string_lossy().to_string();
+        //let connection = protocols::create_service_connection(&backend_path)?;
 
         // Here we would load the step plugins based on their IDs
         let mut steps = BTreeMap::new();
@@ -117,7 +116,8 @@ impl InstallerBuilder {
             available_steps.insert(first_step.clone());
         }
 
-        let channel = protocols::service_connection_to_channel(connection, str_path.clone()).await?;
+        //let channel = protocols::service_connection_to_channel(connection, str_path.clone()).await?;
+        let channel = protocols::unix_channel("/run/lichen.sock").await?;
 
         let installer = Installer {
             steps,
@@ -125,11 +125,6 @@ impl InstallerBuilder {
             active_step: self.active_step,
             available_steps,
         };
-
-        // Validate backend connection
-        let mut b = installer.backend().await?;
-        let _ = b.status(BackendStatusRequest {}).await?.into_inner();
-        trace!("Backend connection validated");
 
         Ok(installer)
     }
@@ -267,5 +262,11 @@ impl Installer {
     pub async fn backend(&self) -> Result<backend_client::BackendClient<Channel>, Error> {
         let client = backend_client::BackendClient::new(self.channel.clone());
         Ok(client)
+    }
+
+    pub async fn shutdown(self) -> Result<(), Error> {
+        let mut backend = self.backend().await?;
+        backend.shutdown(BackendShutdownRequest {}).await?;
+        Ok(())
     }
 }

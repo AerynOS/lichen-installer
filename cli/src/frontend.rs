@@ -75,8 +75,7 @@ impl Frontend {
         Ok(step_id.to_string())
     }
 
-    // Run the CLI installer
-    pub async fn run(&mut self) -> eyre::Result<()> {
+    async fn run_internal(&mut self) -> eyre::Result<()> {
         loop {
             // Build a virtual menu of steps
             let step_id = self.step_menu().await?;
@@ -92,7 +91,6 @@ impl Frontend {
             if !self.installer.has_next() {
                 break;
             }
-            self.installer.next_step()?;
         }
 
         // Make the summary step available and go to it
@@ -103,6 +101,13 @@ impl Frontend {
             .active_step()
             .ok_or_else(|| eyre::eyre!("No active step found in the installer"))?;
         Self::perform_step(self, step).await?;
+        Ok(())
+    }
+
+    // Run the CLI installer
+    pub async fn run(mut self) -> eyre::Result<()> {
+        let _ = self.run_internal().await;
+        //self.installer.shutdown().await?;
         Ok(())
     }
 }

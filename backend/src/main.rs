@@ -8,12 +8,15 @@
 //! This service handles disk management operations and provides a gRPC interface
 //! for clients to interact with disk devices.
 
+use std::os::unix::fs::PermissionsExt;
 use std::{env, fs::File};
 
 use backend::{backend_service, disk_service};
-use protocols::privileged::{service_init, ServiceListener};
+use color_eyre::eyre::bail;
+use nix::libc::geteuid;
 use tokio::net::UnixListener;
 use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 
@@ -43,7 +46,7 @@ fn setup_eyre() {
 /// Creates a log file at "backend.log" and sets up formatting and filtering options
 /// for the tracing subscriber
 fn configure_tracing() -> Result<()> {
-    let file = File::create("backend.log")?;
+    let file = File::create("/tmp/lichen-backend.log")?;
     let file_format = Format::default()
         .with_ansi(false)
         .with_timer(tracing_subscriber::fmt::time::uptime())
@@ -52,7 +55,16 @@ fn configure_tracing() -> Result<()> {
         .with_target(true)
         .with_thread_ids(true);
 
+    let stdout_format = Format::default()
+        .with_ansi(true)
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_target(true)
+        .with_thread_ids(false)
+        .with_source_location(false)
+        .with_file(false);
+
     let file_filter = EnvFilter::new("trace");
+    let stdout_filter = EnvFilter::new("info");
 
     tracing_subscriber::registry()
         .with(
@@ -60,6 +72,11 @@ fn configure_tracing() -> Result<()> {
                 .event_format(file_format)
                 .with_writer(file)
                 .with_filter(file_filter),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .event_format(stdout_format)
+                .with_filter(stdout_filter),
         )
         .with(ErrorLayer::default())
         .init();
@@ -71,13 +88,14 @@ fn configure_tracing() -> Result<()> {
 ///
 /// Waits for either signal and returns when one is received, triggering
 /// graceful shutdown
-async fn signal_handler() {
+async fn signal_handler(mut recv: UnboundedReceiver<()>) {
     let mut sigterm = signal(SignalKind::terminate()).unwrap();
     let mut sigint = signal(SignalKind::interrupt()).unwrap();
 
     tokio::select! {
         _ = sigterm.recv() => {},
         _ = sigint.recv() => {},
+        _ = recv.recv() => {},
     };
 }
 
@@ -87,24 +105,37 @@ async fn signal_handler() {
 /// the gRPC server with the disk service implementation. Handles graceful
 /// shutdown on termination signals.
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    service_init()?;
-
+async fn main() -> Result<()> {
     setup_eyre();
+
+    // Ensure we're euid 0
+    let euid = unsafe { geteuid() };
+    match euid {
+        0 => (),
+        _ => bail!("This service must be run as root"),
+    }
+
     configure_tracing()?;
 
-    let listener = ServiceListener::new()?;
-    listener.set_nonblocking(true)?;
-    let as_tokio = UnixListener::from_std(listener.0)?;
-    let uds_stream = UnixListenerStream::new(as_tokio);
+    // Remove the old socket if it exists
+    let _ = std::fs::remove_file("/run/lichen.sock");
+
+    let listener = UnixListener::bind("/run/lichen.sock")?;
+    // Make it writable by everyone
+    let _ = std::fs::set_permissions("/run/lichen.sock", std::fs::Permissions::from_mode(0o666));
+
+    let uds_stream = UnixListenerStream::new(listener);
+    let (send, recv) = unbounded_channel();
+
+    info!("🚀 Serving on /run/lichen.sock");
 
     Server::builder()
         .add_service(disk_service::service())
-        .add_service(backend_service::service())
-        .serve_with_incoming_shutdown(uds_stream, signal_handler())
+        .add_service(backend_service::service(send))
+        .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
         .await?;
 
-    info!("Shutting down");
+    info!("🛑 Shutting down");
 
     Ok(())
 }

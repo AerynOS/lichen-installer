@@ -210,7 +210,6 @@ dependencies = [
  "color-eyre",
  "console",
  "installer",
- "nix 0.29.0",
  "protocols",
  "tokio",
  "tonic",

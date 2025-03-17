@@ -117,6 +117,11 @@ impl ServiceConnection {
             child_fd: exec.child_fd(),
         }];
 
+        // log the mappings
+        for mapping in &mappings {
+            tracing::warn!("mapping: {:?}", mapping);
+        }
+
         match unsafe { nix::unistd::fork() }? {
             nix::unistd::ForkResult::Parent { child } => {
                 let socket = UnixStream::connect_addr(&socket_addr)?;
