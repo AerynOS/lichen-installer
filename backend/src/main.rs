@@ -10,7 +10,7 @@
 
 use std::{env, fs::File};
 
-use backend::disk_service;
+use backend::{backend_service, disk_service};
 use protocols::privileged::{service_init, ServiceListener};
 use tokio::net::UnixListener;
 use tokio::signal::unix::{signal, SignalKind};
@@ -100,6 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .add_service(disk_service::service())
+        .add_service(backend_service::service())
         .serve_with_incoming_shutdown(uds_stream, signal_handler())
         .await?;
 

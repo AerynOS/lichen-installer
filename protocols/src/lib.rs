@@ -23,6 +23,10 @@ pub mod proto_disks {
     tonic::include_proto!("disks");
 }
 
+pub mod proto_backend {
+    tonic::include_proto!("backend");
+}
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("IO error: {0}")]

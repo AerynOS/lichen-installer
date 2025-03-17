@@ -5,5 +5,7 @@
 
 fn main() {
     println!("cargo:rerun-if-changed=disks.proto");
+    println!("cargo:rerun-if-changed=backend.proto");
     tonic_build::compile_protos("disks.proto").unwrap();
+    tonic_build::compile_protos("backend.proto").unwrap();
 }

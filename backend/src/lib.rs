@@ -3,4 +3,5 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+pub mod backend_service;
 pub mod disk_service;
