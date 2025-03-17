@@ -30,6 +30,7 @@ pub struct Installer {
 pub struct InstallerBuilder {
     backend_path: Option<Box<Path>>,
     step_ids: Vec<String>,
+    active_step: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -52,6 +53,7 @@ impl InstallerBuilder {
                 .map(|p| p.with_file_name("lichen_backend").into())
                 .ok(),
             step_ids: Vec::new(),
+            active_step: None,
         }
     }
 
@@ -64,6 +66,12 @@ impl InstallerBuilder {
     /// Add a step by ID
     pub fn add_step(mut self, step_id: &str) -> Self {
         self.step_ids.push(step_id.to_string());
+        self
+    }
+
+    /// Set the active step
+    pub fn active_step(mut self, step_id: &str) -> Self {
+        self.active_step = Some(step_id.to_string());
         self
     }
 
@@ -84,7 +92,7 @@ impl InstallerBuilder {
             backend_path: str_path,
             steps,
             connection,
-            active_step: None,
+            active_step: self.active_step,
         })
     }
 }
@@ -96,8 +104,19 @@ impl Installer {
     }
 
     /// Get the active step ID
-    pub fn active_step(&self) -> Option<&str> {
+    pub fn active_step_id(&self) -> Option<&str> {
         self.active_step.as_deref()
+    }
+
+    /// Get the active step
+    pub fn active_step(&self) -> Option<&dyn Step> {
+        self.active_step_id()
+            .and_then(|id| self.steps.get(id).map(|s| s.as_ref()))
+    }
+
+    /// Set the active step
+    pub fn set_active_step(&mut self, step_id: &str) {
+        self.active_step = Some(step_id.to_string());
     }
 
     /// Grab a disks RPC client

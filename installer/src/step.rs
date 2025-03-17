@@ -3,16 +3,41 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::Icon;
+use crate::{Icon, Installer};
 use std::collections::HashMap;
 use std::sync::OnceLock;
+use thiserror::Error;
+use tonic::async_trait;
 use tracing::{debug, error, trace};
+
+#[derive(Error, Debug)]
+pub enum StepError {
+    #[error("Step failed: {0}")]
+    Failed(String),
+
+    #[error("Protocol error: {0}")]
+    ProtocolError(#[from] tonic::Status),
+
+    #[error("Installer error: {0}")]
+    InstallerError(#[from] crate::Error),
+
+    #[error("User aborted installation")]
+    UserAborted,
+}
 
 /// A single step in the installation process. Each step represents a distinct phase
 /// of the installation workflow that the user must complete.
+#[async_trait]
 pub trait Step: Send + Sync {
     /// Returns display information for rendering this step in the UI
     fn info(&self) -> &DisplayInfo;
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    /// Runs the step, performing any necessary actions to complete the step
+    async fn run(&self, _installer: &Installer) -> Result<(), StepError> {
+        Ok(())
+    }
 }
 
 /// Metadata for registering an installation step
