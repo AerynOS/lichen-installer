@@ -4,13 +4,18 @@ A heavily in-development, experimental, and early days installer for AerynOS.
 
 ## Build & Test
 
+### Running the backend
+
 ```bash
+$ cargo build -p backend
+$ sudo ./target/debug/lichen_backend
+0.004011159s  INFO lichen_backend: 🚀 Serving on /run/lichen.sock
+```
 
-# Ensure `lichen-backend` also gets built.
-cargo build
+### Running the frontend
 
-# Run the CLI frontend
-cargo run -p cli
+```bash
+$ cargo run -p cli
 ```
 
 To quit the installer, press `ESC` to switch to command mode, then press `q`.
