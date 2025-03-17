@@ -9,8 +9,10 @@ use color_eyre::eyre;
 use console::style;
 use installer::Installer;
 
-mod disks;
-mod summary;
+use crate::CliStep;
+
+pub mod disks;
+pub mod summary;
 
 pub struct Frontend {
     pub installer: Installer,
@@ -32,7 +34,12 @@ impl Frontend {
                 .active_step()
                 .ok_or_else(|| eyre::eyre!("No active step found in the installer"))?;
 
-            step.run(&self.installer).await?;
+            let cli_step = step
+                .as_any()
+                .downcast_ref::<CliStep>()
+                .ok_or_else(|| eyre::eyre!("Failed to downcast step to CliStep"))?;
+
+            cli_step.step.run(&self.installer).await?;
             if !self.installer.has_next() {
                 break;
             }
@@ -46,7 +53,12 @@ impl Frontend {
             .installer
             .active_step()
             .ok_or_else(|| eyre::eyre!("No active step found in the installer"))?;
-        step.run(&self.installer).await?;
+        let cli_step = step
+            .as_any()
+            .downcast_ref::<CliStep>()
+            .ok_or_else(|| eyre::eyre!("Failed to downcast step to CliStep"))?;
+
+        cli_step.step.run(&self.installer).await?;
         Ok(())
     }
 }
