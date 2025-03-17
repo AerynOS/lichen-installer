@@ -151,6 +151,11 @@ impl Installer {
         self.steps.keys().collect()
     }
 
+    /// Get a step by ID
+    pub fn step(&self, step_id: &str) -> Option<&dyn Step> {
+        self.steps.get(step_id).map(|s| s.as_ref())
+    }
+
     /// Make a step available for navigation
     pub fn make_step_available(&mut self, step_id: &str) -> Result<(), NavigationError> {
         if !self.steps.contains_key(step_id) {
