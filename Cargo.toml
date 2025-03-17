@@ -1,13 +1,11 @@
 [workspace]
 members = [
     "backend",
-    "installer",
     "cli",
-    "protocols"
+    "crates/*"
 ]
 default-members = [
     "backend",
-    "installer",
     "cli"
 ]
 resolver = "2"

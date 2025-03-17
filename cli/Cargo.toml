@@ -9,12 +9,12 @@ name = "lichen_cli"
 path = "src/main.rs"
 
 [build-dependencies]
-installer = { path = "../installer" }
+installer = { path = "../crates/installer" }
 
 [dependencies]
-protocols = { path = "../protocols" }
+protocols = { path = "../crates/protocols" }
 tonic = { workspace = true }
-installer = { path = "../installer" }
+installer = { path = "../crates/installer" }
 
 cliclack.workspace = true
 color-eyre = { workspace = true, features = ["issue-url"] }
