@@ -58,12 +58,17 @@ async fn main() -> Result<()> {
     setup_eyre();
     configure_tracing()?;
 
-    let installer = Installer::builder()
+    let mut installer = Installer::builder()
         .add_step("disks")
+        .add_step("summary")
         .active_step("disks")
         .build()
         .await?;
-    let iface = Frontend::new(installer)?;
+
+    // Make the first step available
+    installer.make_step_available("disks")?;
+
+    let mut iface = Frontend::new(installer)?;
     iface.run().await?;
     Ok(())
 }
