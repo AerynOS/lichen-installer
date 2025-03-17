@@ -8,10 +8,9 @@ use std::{
     collections::{BTreeMap, HashSet},
     env,
     path::Path,
-    sync::Arc,
 };
 
-use protocols::privileged::ServiceConnection;
+use protocols::proto_backend::{backend_client, BackendStatusRequest};
 use protocols::proto_disks::disks_client;
 pub use step::*;
 mod icon;
@@ -22,12 +21,12 @@ pub use model::*;
 pub use inventory;
 use thiserror::Error;
 use tonic::transport::Channel;
+use tracing::trace;
 
 /// The installer workflow / mechanism
 pub struct Installer {
     steps: BTreeMap<String, Box<dyn Step>>,
-    connection: Arc<ServiceConnection>,
-    backend_path: String,
+    channel: Channel,
     active_step: Option<String>,
     available_steps: HashSet<String>,
 }
@@ -55,6 +54,9 @@ pub enum NavigationError {
 pub enum Error {
     #[error("Failed to connect to the privileged service")]
     ConnectionError(#[from] protocols::Error),
+
+    #[error("Backend error: {0}")]
+    BackendError(#[from] tonic::Status),
 
     #[error("Missing backend path")]
     MissingBackendPath,
@@ -114,13 +116,22 @@ impl InstallerBuilder {
         if let Some(first_step) = self.step_ids.first() {
             available_steps.insert(first_step.clone());
         }
-        Ok(Installer {
-            backend_path: str_path,
+
+        let channel = protocols::service_connection_to_channel(connection, str_path.clone()).await?;
+
+        let installer = Installer {
             steps,
-            connection,
+            channel,
             active_step: self.active_step,
             available_steps,
-        })
+        };
+
+        // Validate backend connection
+        let mut b = installer.backend().await?;
+        let _ = b.status(BackendStatusRequest {}).await?.into_inner();
+        trace!("Backend connection validated");
+
+        Ok(installer)
     }
 }
 
@@ -248,9 +259,13 @@ impl Installer {
 
     /// Grab a disks RPC client
     pub async fn disks(&self) -> Result<disks_client::DisksClient<Channel>, Error> {
-        let channel =
-            protocols::service_connection_to_channel(self.connection.clone(), self.backend_path.clone()).await?;
-        let client = disks_client::DisksClient::new(channel);
+        let client = disks_client::DisksClient::new(self.channel.clone());
+        Ok(client)
+    }
+
+    /// Grab a backend RPC client
+    pub async fn backend(&self) -> Result<backend_client::BackendClient<Channel>, Error> {
+        let client = backend_client::BackendClient::new(self.channel.clone());
         Ok(client)
     }
 }
