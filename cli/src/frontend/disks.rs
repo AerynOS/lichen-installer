@@ -13,7 +13,7 @@ use protocols::proto_disks::{Disk, ListDisksRequest};
 
 use crate::{CliStep, FrontendStep};
 
-pub async fn ask_for_disk(installer: &Installer) -> Result<(), StepError> {
+pub async fn run(installer: &Installer) -> Result<(), StepError> {
     // Grab the list of disks
     let mut client = installer.disks().await?;
     let disks = client

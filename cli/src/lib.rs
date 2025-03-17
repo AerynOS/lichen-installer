@@ -18,8 +18,8 @@ pub enum FrontendStep {
 impl FrontendStep {
     async fn run(&self, installer: &Installer) -> eyre::Result<()> {
         match self {
-            Self::Disks => frontend::disks::ask_for_disk(installer).await?,
-            Self::Summary => frontend::summary::run_summary(installer).await?,
+            Self::Disks => frontend::disks::run(installer).await?,
+            Self::Summary => frontend::summary::run(installer).await?,
         }
         Ok(())
     }

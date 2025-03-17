@@ -8,7 +8,7 @@ use tracing::error;
 
 use crate::{CliStep, FrontendStep};
 
-pub async fn run_summary(_installer: &Installer) -> Result<(), StepError> {
+pub async fn run(_installer: &Installer) -> Result<(), StepError> {
     error!("Summary step not implemented");
     Ok(())
 }
