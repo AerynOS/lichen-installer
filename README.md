@@ -34,8 +34,6 @@ $ sudo ./target/debug/lichen_backend
 $ cargo run -p cli
 ```
 
-To quit the installer, press `ESC` to switch to command mode, then press `q`.
-
 ## License
 
 `lichen` is available under the terms of the [MPL-2.0](https://spdx.org/licenses/MPL-2.0.html)
