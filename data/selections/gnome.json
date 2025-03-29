@@ -32,7 +32,7 @@
     "gnome-backgrounds",
     "liberation-fonts-ttf",
     "loupe",
-    "serpent-gnome-defaults",
+    "gnome-desktop-defaults",
     "sysbinary(gdm)",
     "sysbinary(plymouthd)"
   ]
