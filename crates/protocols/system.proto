@@ -9,7 +9,7 @@ option java_multiple_files = true;
 option java_package = "com.aerynos.lichen.system";
 option java_outer_classname = "SystemProto";
 
-package backend;
+package system;
 
 service System {
     rpc Status(SystemStatusRequest) returns (SystemStatusResponse) {}

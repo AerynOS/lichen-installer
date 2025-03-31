@@ -24,7 +24,7 @@ pub mod proto_disks {
 }
 
 pub mod proto_system {
-    tonic::include_proto!("backend");
+    tonic::include_proto!("system");
 }
 
 #[derive(Error, Debug)]
