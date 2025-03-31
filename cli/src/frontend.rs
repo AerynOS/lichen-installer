@@ -8,6 +8,7 @@
 use color_eyre::eyre;
 use console::style;
 use installer::{Installer, Step};
+use protocols::lichen::osinfo::OsInfo;
 
 use crate::CliStep;
 
@@ -16,12 +17,13 @@ pub mod summary;
 
 pub struct Frontend {
     pub installer: Installer,
+    pub info: OsInfo,
 }
 
 impl Frontend {
     // Create a new Frontend instance
-    pub fn new(installer: Installer) -> eyre::Result<Self> {
-        Ok(Self { installer })
+    pub fn new(installer: Installer, info: OsInfo) -> eyre::Result<Self> {
+        Ok(Self { installer, info })
     }
 
     // Render the current step

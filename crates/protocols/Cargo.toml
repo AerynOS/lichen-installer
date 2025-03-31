@@ -20,9 +20,10 @@ uuid = { workspace = true, features = ["v4"] }
 tracing.workspace = true
 
 disks = { workspace = true, optional = true }
+os-info = { workspace = true, optional = true }
 
 [features]
-backend-utils = ["dep:disks"]
+backend-utils = ["dep:disks", "dep:os-info"]
 
 [lints]
 workspace = true

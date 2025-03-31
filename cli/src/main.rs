@@ -68,7 +68,10 @@ async fn main() -> Result<()> {
     // Make the first step available
     installer.make_step_available("disks")?;
 
-    let iface = Frontend::new(installer)?;
+    let mut system = installer.system().await?;
+    let info = system.get_os_info(()).await?;
+
+    let iface = Frontend::new(installer, info.into_inner())?;
     iface.run().await?;
     Ok(())
 }

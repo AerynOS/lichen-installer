@@ -49,6 +49,9 @@ impl system_server::System for Service {
         &self,
         _request: Request<()>,
     ) -> Result<Response<protocols::lichen::osinfo::OsInfo>, tonic::Status> {
-        Err(tonic::Status::unimplemented("Not yet implemented"))
+        let osinf = os_info::load_os_info_from_path("/usr/lib/os-info.json")
+            .map_err(|e| tonic::Status::internal(format!("Failed to load OS info: {}", e)))?;
+
+        Ok(Response::new(osinf.into()))
     }
 }
