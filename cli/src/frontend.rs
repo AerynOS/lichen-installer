@@ -51,8 +51,15 @@ impl Frontend {
 
     // Step through the menu, returning the selected step ID
     async fn step_menu(&mut self) -> eyre::Result<String> {
-        cliclack::intro(style("  Install AerynOS  ").white().on_magenta().bold())?;
-        cliclack::log::remark("Welcome to the AerynOS installer")?;
+        let identity = self.info.metadata.as_ref().and_then(|m| m.identity.as_ref());
+        let os_name = identity.map(|i| i.display.clone()).unwrap_or("Unknown OS".into());
+        let proj_name = identity.map(|i| i.name.clone()).unwrap_or("Unknown NAME".into());
+
+        let color_string = identity.and_then(|i| i.ansi_color.clone()).unwrap_or("1;32".into());
+        let styled = format!("\x1b[{color_string}m  Install {os_name}   ");
+        cliclack::intro(styled)?;
+
+        cliclack::log::remark(format!("Welcome to the {} installer", proj_name))?;
         cliclack::log::warning(format!(
             "This is an {} quality installer, use at your own risk!",
             style("alpha").red()
