@@ -1,7 +1,7 @@
 {
   "name": "base",
   "summary": "Base system",
-  "description": "The base system for all Serpent OS installations.",
+  "description": "The base system for all AerynOS installations.",
   "required": [
     "bash-completion",
     "binary(bash)",
