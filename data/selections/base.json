@@ -26,17 +26,17 @@
     "binary(unzip)",
     "binary(wget)",
     "binary(which)",
-    "sysbinary(fsck.ext4)",
-    "sysbinary(fsck.f2fs)",
-    "sysbinary(fsck.xfs)",
     "ca-certificates",
-    "uutils-coreutils",
     "dbus",
     "dbus-broker",
     "iproute2",
     "shadow",
+    "sysbinary(fsck.ext4)",
+    "sysbinary(fsck.f2fs)",
+    "sysbinary(fsck.xfs)",
     "systemd",
     "tzdata",
-    "util-linux"
+    "util-linux",
+    "uutils-coreutils"
   ]
 }
