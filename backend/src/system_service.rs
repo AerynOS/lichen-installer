@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use protocols::proto_system::{
+use protocols::lichen::system::{
     system_server, SystemShutdownRequest, SystemShutdownResponse, SystemStatusRequest, SystemStatusResponse,
 };
 use tokio::sync::mpsc::UnboundedSender;
@@ -50,5 +50,13 @@ impl system_server::System for Service {
         warn!("Shutting down the backend service");
 
         Ok(Response::new(response))
+    }
+
+    /// Get the OS information
+    async fn get_os_info(
+        &self,
+        _request: Request<()>,
+    ) -> Result<Response<protocols::lichen::osinfo::OsInfo>, tonic::Status> {
+        Err(tonic::Status::unimplemented("Not yet implemented"))
     }
 }

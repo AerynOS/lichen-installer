@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use disks::BlockDevice;
-use protocols::proto_disks::{disks_server, ListDisksRequest, ListDisksResponse};
+use protocols::lichen::disks::{disks_server, ListDisksRequest, ListDisksResponse};
 use tonic::{Request, Response};
 
 /// Service represents the disk management service implementation

@@ -5,7 +5,11 @@
 
 fn main() {
     println!("cargo:rerun-if-changed=disks.proto");
+    println!("cargo:rerun-if-changed=osinfo.proto");
     println!("cargo:rerun-if-changed=system.proto");
-    tonic_build::compile_protos("disks.proto").unwrap();
-    tonic_build::compile_protos("system.proto").unwrap();
+
+    tonic_build::configure()
+        .build_server(true)
+        .compile_protos(&["disks.proto", "osinfo.proto", "system.proto"], &["."])
+        .unwrap();
 }

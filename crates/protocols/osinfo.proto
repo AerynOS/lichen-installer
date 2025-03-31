@@ -1,0 +1,299 @@
+// SPDX-FileCopyrightText: Copyright © 2025 Serpent OS Developers
+// SPDX-FileCopyrightText: Copyright © 2025 AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package lichen.osinfo;
+
+// Top-level message containing all OS information
+message OSInfo {
+  // Version of the OS info schema
+  string version = 1;
+  // Date the OS project was started (stored as ISO-8601 string)
+  string start_date = 2;
+  // Metadata about the OS
+  Metadata metadata = 3;
+  // System configuration and details
+  System system = 4;
+  // Links to project resources
+  Resources resources = 5;
+  // Security contact information
+  optional SecurityContact security_contact = 6;
+}
+
+// Metadata about the OS including identity, maintainers and version information
+message Metadata {
+  // Core identity information
+  Identity identity = 1;
+  // Map of maintainer groups to lists of maintainers
+  map<string, MaintainerList> maintainers = 2;
+  // Version information
+  VersionInfo version = 3;
+}
+
+// A list of maintainers (used for the map in Metadata)
+message MaintainerList {
+  repeated Maintainer maintainers = 1;
+}
+
+// Identity information for the OS
+message Identity {
+  // Unique identifier for the OS
+  string id = 1;
+  // Parent OS this is based on/similar to
+  optional string id_like = 2;
+  // Full name of the OS
+  string name = 3;
+  // Display name/branding
+  string display = 4;
+  // ANSI terminal color code for branding
+  optional string ansi_color = 5;
+  // Previous identities/names
+  repeated FormerIdentity former_identities = 6;
+}
+
+// Historical identity information
+message FormerIdentity {
+  // Previous OS identifier
+  string id = 1;
+  // Previous OS name
+  string name = 2;
+  // When this identity started (ISO-8601 string)
+  string start_date = 3;
+  // When this identity ended (ISO-8601 string)
+  string end_date = 4;
+  // Version when identity was changed
+  optional string end_version = 5;
+  // Link to announcement of change
+  optional string announcement = 6;
+}
+
+// Information about a project maintainer
+message Maintainer {
+  // Full name of maintainer
+  string name = 1;
+  // Role/position in project
+  MaintainerRole role = 2;
+  // Contact email
+  string email = 3;
+  // When the maintainer joined the project (ISO-8601 string)
+  optional string start_date = 4;
+  // When the maintainer left the project (ISO-8601 string)
+  optional string end_date = 5;
+}
+
+// Role types for maintainers
+enum MaintainerRole {
+  MAINTAINER_ROLE_UNSPECIFIED = 0;
+  MAINTAINER_ROLE_FOUNDER = 1;
+  MAINTAINER_ROLE_MAINTAINER = 2;
+  MAINTAINER_ROLE_CONTRIBUTOR = 3;
+}
+
+// Detailed version information
+message VersionInfo {
+  // Complete version string
+  string full = 1;
+  // Short version number
+  string short = 2;
+  // Unique build identifier
+  string build_id = 3;
+  // Release date (ISO-8601 string)
+  string released = 4;
+  // Link to release announcement
+  optional string announcement = 5;
+  // Version codename
+  optional string codename = 6;
+}
+
+// Core system information and configuration
+message System {
+  // System composition details
+  Composition composition = 1;
+  // Enabled features
+  Features features = 2;
+  // Kernel information
+  Kernel kernel = 3;
+  // Platform details
+  Platform platform = 4;
+  // Update configuration
+  Update update = 5;
+}
+
+// System composition including base systems and technologies
+message Composition {
+  // Base systems used
+  repeated string bases = 1;
+  // Technology components
+  Technology technology = 2;
+}
+
+// Core and optional technology components
+message Technology {
+  // Required core technologies
+  repeated string core = 1;
+  // Optional add-on technologies
+  repeated string optional = 2;
+}
+
+// System feature configuration
+message Features {
+  // Atomic update settings
+  AtomicUpdates atomic_updates = 1;
+  // Boot configuration
+  Boot boot = 2;
+  // Filesystem settings
+  Filesystem filesystem = 3;
+}
+
+// Atomic update system configuration
+message AtomicUpdates {
+  // Update strategy used
+  string strategy = 1;
+  // Whether rollbacks are supported
+  bool rollback_support = 2;
+}
+
+// Boot configuration
+message Boot {
+  // Bootloader used
+  string bootloader = 1;
+  // Firmware support details
+  Firmware firmware = 2;
+}
+
+// Firmware support configuration
+message Firmware {
+  // UEFI support
+  bool uefi = 1;
+  // Secure Boot support
+  bool secure_boot = 2;
+  // Legacy BIOS support
+  bool bios = 3;
+}
+
+// Filesystem configuration
+message Filesystem {
+  // Default filesystem
+  string default = 1;
+  // Supported filesystems
+  repeated string supported = 2;
+}
+
+// Kernel information
+message Kernel {
+  // Type of kernel
+  string type = 1;
+  // Kernel name
+  string name = 2;
+}
+
+// Platform architecture information
+message Platform {
+  // CPU architecture
+  string architecture = 1;
+  // Architecture variant
+  string variant = 2;
+}
+
+// Update strategy configuration
+message Update {
+  // Update strategy used
+  string strategy = 1;
+  // Update cadence settings
+  Cadence cadence = 2;
+  // Update approach used
+  string approach = 3;
+}
+
+// Update cadence configuration
+message Cadence {
+  // Type of update cadence
+  CadenceType type = 1;
+  // Update sync interval
+  optional string sync_interval = 2;
+  // Day updates sync
+  optional string sync_day = 3;
+  // Release schedule
+  optional string release_schedule = 4;
+  // Support timeline
+  optional string support_timeline = 5;
+}
+
+// Types of update cadence
+enum CadenceType {
+  CADENCE_TYPE_UNSPECIFIED = 0;
+  CADENCE_TYPE_ROLLING = 1;
+  CADENCE_TYPE_FIXED = 2;
+  CADENCE_TYPE_LTS = 3;
+  CADENCE_TYPE_POINT = 4;
+}
+
+// Project resources like websites and social media
+message Resources {
+  // Project websites
+  map<string, Website> websites = 1;
+  // Social media links
+  map<string, SocialLink> social = 2;
+  // Funding platform links
+  map<string, FundingLink> funding = 3;
+}
+
+// Website information
+message Website {
+  // Website URL
+  string url = 1;
+  // Display name
+  string display_name = 2;
+  // Website scope/purpose
+  WebsiteScope scope = 3;
+}
+
+// Website scope/purpose
+enum WebsiteScope {
+  WEBSITE_SCOPE_UNSPECIFIED = 0;
+  WEBSITE_SCOPE_HOME = 1;
+  WEBSITE_SCOPE_DOCUMENTATION = 2;
+  WEBSITE_SCOPE_SUPPORT = 3;
+  WEBSITE_SCOPE_BUG_TRACKER = 4;
+  WEBSITE_SCOPE_DEVELOPER = 5;
+  WEBSITE_SCOPE_PUBLIC = 6;
+  WEBSITE_SCOPE_END_USER_DOCS = 7;
+  WEBSITE_SCOPE_DEVELOPER_DOCS = 8;
+  WEBSITE_SCOPE_PRIVACY_POLICY = 9;
+  WEBSITE_SCOPE_TERMS_OF_SERVICE = 10;
+  WEBSITE_SCOPE_LEGAL = 11;
+  WEBSITE_SCOPE_SECURITY_POLICY = 12;
+}
+
+// Social media link
+message SocialLink {
+  // Social media URL
+  string url = 1;
+  // Display name
+  string display_name = 2;
+  // Platform name
+  string platform = 3;
+}
+
+// Funding platform link
+message FundingLink {
+  // Funding page URL
+  string url = 1;
+  // Display name
+  string display_name = 2;
+  // Platform name
+  string platform = 3;
+}
+
+// Security contact information for vulnerability reporting
+message SecurityContact {
+  // Email address for security-related communications
+  optional string email = 1;
+  // PGP key for encrypted vulnerability reports
+  optional string pgp_key = 2;
+  // Vulnerability disclosure policy
+  optional string disclosure_policy = 3;
+}

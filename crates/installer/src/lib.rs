@@ -10,8 +10,8 @@ use std::{
     path::Path,
 };
 
-use protocols::proto_disks::disks_client;
-use protocols::proto_system::{system_client, SystemShutdownRequest, SystemStatusRequest};
+use protocols::lichen::disks::disks_client;
+use protocols::lichen::system::{system_client, SystemShutdownRequest, SystemStatusRequest};
 pub use step::*;
 mod icon;
 pub use icon::*;

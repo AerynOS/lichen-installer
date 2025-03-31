@@ -19,12 +19,16 @@ use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 
-pub mod proto_disks {
-    tonic::include_proto!("disks");
-}
-
-pub mod proto_system {
-    tonic::include_proto!("system");
+pub mod lichen {
+    pub mod disks {
+        tonic::include_proto!("lichen.disks");
+    }
+    pub mod osinfo {
+        tonic::include_proto!("lichen.osinfo");
+    }
+    pub mod system {
+        tonic::include_proto!("lichen.system");
+    }
 }
 
 #[derive(Error, Debug)]

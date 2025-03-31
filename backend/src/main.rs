@@ -21,7 +21,7 @@ use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 
 use color_eyre::Result;
-pub use protocols::proto_disks;
+pub use protocols::lichen::disks;
 use tracing::info;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};

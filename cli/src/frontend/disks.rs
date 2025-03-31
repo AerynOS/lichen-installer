@@ -9,7 +9,7 @@
 //! allowing users to choose which disk to install AerynOS on.
 
 use installer::{register_step, DisplayInfo, Installer, StepError};
-use protocols::proto_disks::{Disk, ListDisksRequest};
+use protocols::lichen::disks::{Disk, ListDisksRequest};
 
 use crate::{CliStep, FrontendStep};
 
