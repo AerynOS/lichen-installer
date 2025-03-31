@@ -11,7 +11,7 @@ use std::{
 };
 
 use protocols::lichen::disks::disks_client;
-use protocols::lichen::system::{system_client, SystemShutdownRequest, SystemStatusRequest};
+use protocols::lichen::system::system_client;
 pub use step::*;
 mod icon;
 pub use icon::*;
@@ -123,7 +123,7 @@ impl InstallerBuilder {
 
         // Ensure the backend is running
         let mut backend = installer.system().await?;
-        let _ = backend.status(SystemStatusRequest {}).await?;
+        let _ = backend.status(()).await?;
 
         Ok(installer)
     }
@@ -265,7 +265,7 @@ impl Installer {
 
     pub async fn shutdown(self) -> Result<(), Error> {
         let mut backend = self.system().await?;
-        backend.shutdown(SystemShutdownRequest {}).await?;
+        backend.shutdown(()).await?;
         Ok(())
     }
 }

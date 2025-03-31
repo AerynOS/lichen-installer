@@ -3,9 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use protocols::lichen::system::{
-    system_server, SystemShutdownRequest, SystemShutdownResponse, SystemStatusRequest, SystemStatusResponse,
-};
+use protocols::lichen::system::{system_server, SystemShutdownResponse, SystemStatusResponse};
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::Request;
 use tonic::Response;
@@ -28,20 +26,14 @@ pub fn service(sender: UnboundedSender<()>) -> system_server::SystemServer<Servi
 
 #[tonic::async_trait]
 impl system_server::System for Service {
-    async fn status(
-        &self,
-        _request: Request<SystemStatusRequest>,
-    ) -> Result<Response<SystemStatusResponse>, tonic::Status> {
+    async fn status(&self, _request: Request<()>) -> Result<Response<SystemStatusResponse>, tonic::Status> {
         let uptime = self.start_time.elapsed().as_secs();
         let response = SystemStatusResponse { uptime };
         Ok(Response::new(response))
     }
 
     /// Shutdown the system service
-    async fn shutdown(
-        &self,
-        _request: Request<SystemShutdownRequest>,
-    ) -> Result<Response<SystemShutdownResponse>, tonic::Status> {
+    async fn shutdown(&self, _request: Request<()>) -> Result<Response<SystemShutdownResponse>, tonic::Status> {
         let response = SystemShutdownResponse { shutting_down: true };
 
         // Send a signal to the parent process to shut down

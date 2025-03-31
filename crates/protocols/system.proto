@@ -11,20 +11,14 @@ import "osinfo.proto";
 import "google/protobuf/empty.proto";
 
 service System {
-    rpc Status(SystemStatusRequest) returns (SystemStatusResponse) {}
-    rpc Shutdown(SystemShutdownRequest) returns (SystemShutdownResponse) {}
+    rpc Status(google.protobuf.Empty) returns (SystemStatusResponse) {}
+    rpc Shutdown(google.protobuf.Empty) returns (SystemShutdownResponse) {}
     rpc GetOSInfo(google.protobuf.Empty) returns (lichen.osinfo.OSInfo) {}
-}
-
-message SystemStatusRequest {
 }
 
 message SystemStatusResponse {
     // System uptime in seconds
     uint64 uptime = 1;
-}
-
-message SystemShutdownRequest {
 }
 
 message SystemShutdownResponse {
