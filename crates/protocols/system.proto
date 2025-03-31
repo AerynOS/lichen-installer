@@ -1,0 +1,33 @@
+// SPDX-FileCopyrightText: Copyright © 2025 Serpent OS Developers
+// SPDX-FileCopyrightText: Copyright © 2025 AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.aerynos.lichen.system";
+option java_outer_classname = "SystemProto";
+
+package backend;
+
+service System {
+    rpc Status(SystemStatusRequest) returns (SystemStatusResponse) {}
+    rpc Shutdown(SystemShutdownRequest) returns (SystemShutdownResponse) {}
+}
+
+message SystemStatusRequest {
+}
+
+message SystemStatusResponse {
+    // System uptime in seconds
+    uint64 uptime = 1;
+}
+
+message SystemShutdownRequest {
+}
+
+message SystemShutdownResponse {
+    // True if the system is shutting down
+    bool shutting_down = 1;
+}

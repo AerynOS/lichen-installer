@@ -23,7 +23,7 @@ pub mod proto_disks {
     tonic::include_proto!("disks");
 }
 
-pub mod proto_backend {
+pub mod proto_system {
     tonic::include_proto!("backend");
 }
 

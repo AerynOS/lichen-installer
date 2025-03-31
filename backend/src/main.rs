@@ -11,7 +11,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::{env, fs::File};
 
-use backend::{backend_service, disk_service};
+use backend::{disk_service, system_service};
 use color_eyre::eyre::bail;
 use nix::libc::geteuid;
 use tokio::net::UnixListener;
@@ -131,7 +131,7 @@ async fn main() -> Result<()> {
 
     Server::builder()
         .add_service(disk_service::service())
-        .add_service(backend_service::service(send))
+        .add_service(system_service::service(send))
         .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
         .await?;
 

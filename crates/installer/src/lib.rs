@@ -10,8 +10,8 @@ use std::{
     path::Path,
 };
 
-use protocols::proto_backend::{backend_client, BackendShutdownRequest, BackendStatusRequest};
 use protocols::proto_disks::disks_client;
+use protocols::proto_system::{system_client, SystemShutdownRequest, SystemStatusRequest};
 pub use step::*;
 mod icon;
 pub use icon::*;
@@ -122,8 +122,8 @@ impl InstallerBuilder {
         };
 
         // Ensure the backend is running
-        let mut backend = installer.backend().await?;
-        let _ = backend.status(BackendStatusRequest {}).await?;
+        let mut backend = installer.system().await?;
+        let _ = backend.status(SystemStatusRequest {}).await?;
 
         Ok(installer)
     }
@@ -257,15 +257,15 @@ impl Installer {
         Ok(client)
     }
 
-    /// Grab a backend RPC client
-    pub async fn backend(&self) -> Result<backend_client::BackendClient<Channel>, Error> {
-        let client = backend_client::BackendClient::new(self.channel.clone());
+    /// Grab a system RPC client
+    pub async fn system(&self) -> Result<system_client::SystemClient<Channel>, Error> {
+        let client = system_client::SystemClient::new(self.channel.clone());
         Ok(client)
     }
 
     pub async fn shutdown(self) -> Result<(), Error> {
-        let mut backend = self.backend().await?;
-        backend.shutdown(BackendShutdownRequest {}).await?;
+        let mut backend = self.system().await?;
+        backend.shutdown(SystemShutdownRequest {}).await?;
         Ok(())
     }
 }
