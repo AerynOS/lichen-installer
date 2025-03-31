@@ -9,11 +9,14 @@
 //! allowing users to choose which disk to install AerynOS on.
 
 use installer::{register_step, DisplayInfo, Installer, StepError};
-use protocols::lichen::disks::{Disk, ListDisksRequest};
+use protocols::lichen::{
+    disks::{Disk, ListDisksRequest},
+    osinfo::OsInfo,
+};
 
 use crate::{CliStep, FrontendStep};
 
-pub async fn run(installer: &Installer) -> Result<(), StepError> {
+pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> {
     // Grab the list of disks
     let mut client = installer.disks().await?;
     let disks = client
@@ -28,7 +31,14 @@ pub async fn run(installer: &Installer) -> Result<(), StepError> {
         .map(|(idx, d)| (idx, render_disk(d), "".to_string()))
         .collect::<Vec<_>>();
 
-    let _index = cliclack::select("What disk would you like to install AerynOS on?")
+    let os_name = info
+        .metadata
+        .as_ref()
+        .and_then(|m| m.identity.as_ref())
+        .map(|i| i.display.clone())
+        .unwrap_or("Unknown OS".into());
+
+    let _index = cliclack::select(format!("What disk would you like to install {os_name} on?"))
         .items(&renderable_devices)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
@@ -48,10 +58,10 @@ fn render_disk(disk: &Disk) -> String {
 register_step! {
     id: "disks",
     author: "AerynOS Developers",
-    description: "Select the disk to install AerynOS on",
+    description: "Select the disk to install on",
     create: || Box::new(CliStep { info: DisplayInfo {
         title: "Disk selection".to_string(),
-        description: "Select the disk to install AerynOS on".to_string(),
+        description: "Select the disk to install on".to_string(),
         icon: None,
     }, step: FrontendStep::Disks })
 }

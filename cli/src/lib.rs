@@ -6,6 +6,7 @@
 use async_trait::async_trait;
 use color_eyre::eyre;
 use installer::{DisplayInfo, Installer, Step};
+use protocols::lichen::osinfo::OsInfo;
 
 pub mod frontend;
 pub mod logging;
@@ -16,9 +17,9 @@ pub enum FrontendStep {
 }
 
 impl FrontendStep {
-    async fn run(&self, installer: &Installer) -> eyre::Result<()> {
+    async fn run(&self, info: &OsInfo, installer: &Installer) -> eyre::Result<()> {
         match self {
-            Self::Disks => frontend::disks::run(installer).await?,
+            Self::Disks => frontend::disks::run(info, installer).await?,
             Self::Summary => frontend::summary::run(installer).await?,
         }
         Ok(())

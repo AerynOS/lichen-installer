@@ -44,7 +44,7 @@ impl Frontend {
             .ok_or_else(|| eyre::eyre!("Failed to downcast step to CliStep"))?;
         Self::render_step(cli_step)?;
 
-        cli_step.step.run(&self.installer).await?;
+        cli_step.step.run(&self.info, &self.installer).await?;
         cliclack::outro("")?;
         Ok(())
     }
@@ -55,7 +55,7 @@ impl Frontend {
         let os_name = identity.map(|i| i.display.clone()).unwrap_or("Unknown OS".into());
         let proj_name = identity.map(|i| i.name.clone()).unwrap_or("Unknown NAME".into());
 
-        let color_string = identity.and_then(|i| i.ansi_color.clone()).unwrap_or("1;32".into());
+        let color_string = identity.and_then(|i| i.ansi_color.clone()).unwrap_or("1;36".into());
         let styled = format!("\x1b[{color_string}m  Install {os_name}   ");
         cliclack::intro(styled)?;
 
