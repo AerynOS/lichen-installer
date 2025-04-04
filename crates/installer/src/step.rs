@@ -78,7 +78,7 @@ pub fn get_step(id: &str) -> Option<Box<dyn Step>> {
             debug!(id = id, "Creating step instance");
             Some((info.create)())
         }
-        None => {
+        _ => {
             error!(id = id, "Step \"{id}\" not found");
             None
         }
