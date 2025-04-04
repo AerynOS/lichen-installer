@@ -11,6 +11,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::{env, fs::File};
 
+use backend::auth::uds_interceptor;
 use backend::{disk_service, system_service};
 use color_eyre::eyre::bail;
 use nix::libc::geteuid;
@@ -18,6 +19,7 @@ use tokio::net::UnixListener;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use tokio_stream::wrappers::UnixListenerStream;
+use tonic::service::interceptor;
 use tonic::transport::Server;
 
 use color_eyre::Result;
@@ -130,6 +132,7 @@ async fn main() -> Result<()> {
     info!("🚀 Serving on /run/lichen.sock");
 
     Server::builder()
+        .layer(interceptor(uds_interceptor))
         .add_service(disk_service::service())
         .add_service(system_service::service(send))
         .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
