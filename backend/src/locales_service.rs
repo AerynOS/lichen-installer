@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use locales_rs::Registry;
 use protocols::lichen::locales::{locales_server, GetLocaleRequest, ListLocalesResponse, Locale};
@@ -33,6 +33,14 @@ pub async fn service(auth: Arc<AuthService>) -> color_eyre::Result<locales_serve
     let locale_codes = text.lines().map(|l| l.to_string()).collect::<Vec<_>>();
 
     info!(num_locales = locale_codes.len(), "Loaded system locale codes");
+
+    let current_lang = env::var("LANG").unwrap_or("en_US.UTF-8".to_string());
+    let current_locale = registry.locale(&current_lang);
+    if let Some(locale) = current_locale {
+        info!(lang = current_lang, "Current system locale is {}", locale.display_name);
+    } else {
+        info!("No current system locale found");
+    }
 
     let server = locales_server::LocalesServer::new(Service {
         _auth: auth,
