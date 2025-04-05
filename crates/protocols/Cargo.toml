@@ -21,9 +21,10 @@ tracing.workspace = true
 
 disks = { workspace = true, optional = true }
 os-info = { workspace = true, optional = true }
+locales-rs = { workspace = true, optional = true }
 
 [features]
-backend-utils = ["dep:disks", "dep:os-info"]
+backend-utils = ["dep:disks", "dep:os-info", "dep:locales-rs"]
 
 [lints]
 workspace = true
