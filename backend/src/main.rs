@@ -137,7 +137,7 @@ async fn main() -> Result<()> {
     Server::builder()
         .layer(interceptor(uds_interceptor))
         .add_service(disk_service::service(auth.clone()))
-        .add_service(locales_service::service(auth.clone()))
+        .add_service(locales_service::service(auth.clone()).await?)
         .add_service(system_service::service(auth.clone(), send))
         .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
         .await?;

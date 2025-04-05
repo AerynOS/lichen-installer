@@ -147,6 +147,7 @@ dependencies = [
  "console",
  "disks",
  "lichen-macros",
+ "locales-rs",
  "nix 0.29.0",
  "os-info",
  "protocols",
@@ -405,6 +406,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13624c2627564efccf4934284bdd98cbaa14e79b0b5a141218e507b3a823456"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fs-err"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f89bda4c2a21204059a977ed3bfe746677dfd137b83c339e702b0ac91d482aa"
+dependencies = [
+ "autocfg",
+ "tokio",
 ]
 
 [[package]]
@@ -891,6 +902,17 @@ name = "litemap"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23fb14cb19457329c82206317a5663005a4d404783dc74f4252769b0d5f42856"
+
+[[package]]
+name = "locales-rs"
+version = "0.1.0"
+source = "git+https://github.com/AerynOS/locales-rs.git#6fbbefdb807b7cabf2ee29cf3b5b927971f966f1"
+dependencies = [
+ "fs-err",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+]
 
 [[package]]
 name = "lock_api"

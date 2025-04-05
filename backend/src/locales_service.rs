@@ -5,20 +5,42 @@
 
 use std::sync::Arc;
 
+use locales_rs::Registry;
 use protocols::lichen::locales::{locales_server, GetLocaleRequest, ListLocalesResponse, Locale};
+use tokio::process::Command;
 use tonic::{Request, Response};
+use tracing::info;
 
 use crate::auth::AuthService;
 
 /// System service for queries and shutdown
-#[derive(Debug)]
 pub struct Service {
     _auth: Arc<AuthService>,
+
+    // The locales registry
+    registry: Registry,
+
+    // Known locales
+    locale_codes: Vec<String>,
 }
 
 /// Creates a new gRPC server instance using the default Service implementation
-pub fn service(auth: Arc<AuthService>) -> locales_server::LocalesServer<Service> {
-    locales_server::LocalesServer::new(Service { _auth: auth })
+pub async fn service(auth: Arc<AuthService>) -> color_eyre::Result<locales_server::LocalesServer<Service>> {
+    let registry = Registry::new()?;
+
+    let output = Command::new("localectl").arg("list-locales").output().await?;
+    let text = String::from_utf8(output.stdout)?;
+    let locale_codes = text.lines().map(|l| l.to_string()).collect::<Vec<_>>();
+
+    info!(num_locales = locale_codes.len(), "Loaded system locale codes");
+
+    let server = locales_server::LocalesServer::new(Service {
+        _auth: auth,
+        registry,
+        locale_codes,
+    });
+
+    Ok(server)
 }
 
 #[tonic::async_trait]

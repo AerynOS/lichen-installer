@@ -17,6 +17,7 @@ color-eyre = "0.6.3"
 console = "0.15.11"
 disks = { git = "https://github.com/AerynOS/disks-rs.git", version = "0.1.0" }
 inventory = "0.3.20"
+locales-rs = { git = "https://github.com/AerynOS/locales-rs.git", version = "0.1.0" }
 prost = "0.13.5"
 provisioning = { git = "https://github.com/AerynOS/disks-rs.git", version = "0.1.0" }
 miette = "7.5.0"
