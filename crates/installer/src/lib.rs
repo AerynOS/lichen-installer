@@ -10,8 +10,8 @@ use std::{
     path::Path,
 };
 
-use protocols::lichen::disks::disks_client;
 use protocols::lichen::system::system_client;
+use protocols::lichen::{disks::disks_client, locales::locales_client};
 pub use step::*;
 mod icon;
 pub use icon::*;
@@ -254,6 +254,12 @@ impl Installer {
     /// Grab a disks RPC client
     pub async fn disks(&self) -> Result<disks_client::DisksClient<Channel>, Error> {
         let client = disks_client::DisksClient::new(self.channel.clone());
+        Ok(client)
+    }
+
+    /// Grab a locales RPC client
+    pub async fn locales(&self) -> Result<locales_client::LocalesClient<Channel>, Error> {
+        let client = locales_client::LocalesClient::new(self.channel.clone());
         Ok(client)
     }
 

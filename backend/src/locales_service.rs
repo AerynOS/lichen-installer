@@ -60,6 +60,18 @@ impl locales_server::Locales for Service {
 
     /// Gets the locale details for a specific locale
     async fn get_locale(&self, _request: Request<GetLocaleRequest>) -> Result<Response<Locale>, tonic::Status> {
-        todo!()
+        let request = _request.into_inner();
+        let locale_code = request.name;
+
+        match self.registry.locale(&locale_code) {
+            Some(locale) => {
+                let conv = locale.into();
+                Ok(Response::new(conv))
+            }
+            None => Err(tonic::Status::not_found(format!(
+                "Locale code {} not found",
+                locale_code
+            ))),
+        }
     }
 }

@@ -6,8 +6,10 @@
 use cli::{frontend::Frontend, logging::CliclackLayer};
 use color_eyre::Result;
 use installer::Installer;
+use protocols::lichen::locales::GetLocaleRequest;
 use std::env;
 use std::fs::File;
+use tracing::info;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
@@ -70,6 +72,20 @@ async fn main() -> Result<()> {
 
     let mut system = installer.system().await?;
     let info = system.get_os_info(()).await?;
+
+    let mut locale = installer.locales().await?;
+    let system_locale = locale
+        .get_locale(GetLocaleRequest {
+            name: env::var("LANG").unwrap_or("en_US.utf-8".to_string()),
+        })
+        .await?
+        .into_inner();
+
+    info!(
+        "System locale currently set to {} {:?}",
+        system_locale.display_name,
+        system_locale.territory.map(|t| t.flag)
+    );
 
     let iface = Frontend::new(installer, info.into_inner())?;
     iface.run().await?;

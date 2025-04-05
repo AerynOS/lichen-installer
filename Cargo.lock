@@ -1234,6 +1234,7 @@ dependencies = [
  "disks",
  "http",
  "hyper-util",
+ "locales-rs",
  "nix 0.29.0",
  "os-info",
  "prost",
