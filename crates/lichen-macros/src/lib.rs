@@ -31,13 +31,6 @@ impl Parse for AuthorizedArgs {
 /// polkit action IDs. It extracts the auth service from `self.auth` and performs
 /// the check before executing the actual method logic.
 ///
-/// # Syntax
-///
-/// ```
-/// #[authorized("com.aerynos.lichen.read.disks")]
-/// async fn my_method(...) { ... }
-/// ```
-///
 /// # Keyword Arguments
 ///
 /// - `message="Custom error message"` - Custom error message (optional)
