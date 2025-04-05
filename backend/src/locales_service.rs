@@ -55,7 +55,15 @@ pub async fn service(auth: Arc<AuthService>) -> color_eyre::Result<locales_serve
 impl locales_server::Locales for Service {
     /// Lists all available locales on the system
     async fn list_locales(&self, _request: Request<()>) -> Result<Response<ListLocalesResponse>, tonic::Status> {
-        todo!()
+        let locales = self
+            .locale_codes
+            .iter()
+            .filter_map(|code| self.registry.locale(code))
+            .map(|locale| locale.into())
+            .collect();
+
+        let response = ListLocalesResponse { locales };
+        Ok(Response::new(response))
     }
 
     /// Gets the locale details for a specific locale

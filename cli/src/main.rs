@@ -74,6 +74,10 @@ async fn main() -> Result<()> {
     let info = system.get_os_info(()).await?;
 
     let mut locale = installer.locales().await?;
+    for locale in locale.list_locales(()).await?.into_inner().locales {
+        info!("Available locale: {} {}", locale.display_name, locale.name);
+    }
+
     let system_locale = locale
         .get_locale(GetLocaleRequest {
             name: env::var("LANG").unwrap_or("en_US.utf-8".to_string()),
