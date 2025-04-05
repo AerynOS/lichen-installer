@@ -7,6 +7,8 @@ syntax = "proto3";
 
 package lichen.locales;
 
+import "google/protobuf/empty.proto";
+
 // Simplistic language representation
 message Language {
   string code = 1;
@@ -31,4 +33,17 @@ message Locale {
   Territory territory = 4;
   optional string modifier = 5;
   optional string codeset = 6;
+}
+
+service Locales {
+  rpc ListLocales(google.protobuf.Empty) returns (ListLocalesResponse) {}
+  rpc GetLocale(GetLocaleRequest) returns (Locale) {}
+}
+
+message ListLocalesResponse {
+  repeated Locale locales = 1;
+}
+
+message GetLocaleRequest {
+  string name = 1;
 }

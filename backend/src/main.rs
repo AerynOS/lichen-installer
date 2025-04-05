@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::{env, fs::File};
 
 use backend::auth::{uds_interceptor, AuthService};
-use backend::{disk_service, system_service};
+use backend::{disk_service, locales_service, system_service};
 use color_eyre::eyre::bail;
 use nix::libc::geteuid;
 use tokio::net::UnixListener;
@@ -137,6 +137,7 @@ async fn main() -> Result<()> {
     Server::builder()
         .layer(interceptor(uds_interceptor))
         .add_service(disk_service::service(auth.clone()))
+        .add_service(locales_service::service(auth.clone()))
         .add_service(system_service::service(auth.clone(), send))
         .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
         .await?;
