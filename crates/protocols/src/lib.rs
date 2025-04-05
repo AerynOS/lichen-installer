@@ -23,6 +23,9 @@ pub mod lichen {
     pub mod disks {
         tonic::include_proto!("lichen.disks");
     }
+    pub mod locales {
+        tonic::include_proto!("lichen.locales");
+    }
     pub mod osinfo {
         tonic::include_proto!("lichen.osinfo");
     }
