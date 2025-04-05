@@ -3,37 +3,46 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use std::sync::Arc;
+
+use lichen_macros::authorized;
 use protocols::lichen::system::{system_server, SystemShutdownResponse, SystemStatusResponse};
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::Request;
 use tonic::Response;
 use tracing::warn;
 
+use crate::auth::AuthService;
+
 /// System service for queries and shutdown
 #[derive(Debug)]
 pub struct Service {
     start_time: std::time::Instant,
     sender: UnboundedSender<()>,
+    auth: Arc<AuthService>,
 }
 
 /// Creates a new gRPC server instance using the default Service implementation
-pub fn service(sender: UnboundedSender<()>) -> system_server::SystemServer<Service> {
+pub fn service(auth: Arc<AuthService>, sender: UnboundedSender<()>) -> system_server::SystemServer<Service> {
     system_server::SystemServer::new(Service {
         start_time: std::time::Instant::now(),
         sender,
+        auth,
     })
 }
 
 #[tonic::async_trait]
 impl system_server::System for Service {
-    async fn status(&self, _request: Request<()>) -> Result<Response<SystemStatusResponse>, tonic::Status> {
+    #[authorized("com.aerynos.lichen.system.status")]
+    async fn status(&self, request: Request<()>) -> Result<Response<SystemStatusResponse>, tonic::Status> {
         let uptime = self.start_time.elapsed().as_secs();
         let response = SystemStatusResponse { uptime };
         Ok(Response::new(response))
     }
 
     /// Shutdown the system service
-    async fn shutdown(&self, _request: Request<()>) -> Result<Response<SystemShutdownResponse>, tonic::Status> {
+    #[authorized("com.aerynos.lichen.system.shutdown")]
+    async fn shutdown(&self, request: Request<()>) -> Result<Response<SystemShutdownResponse>, tonic::Status> {
         let response = SystemShutdownResponse { shutting_down: true };
 
         // Send a signal to the parent process to shut down

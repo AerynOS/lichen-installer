@@ -3,17 +3,24 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use std::sync::Arc;
+
 use disks::BlockDevice;
+use lichen_macros::authorized;
 use protocols::lichen::disks::{disks_server, ListDisksRequest, ListDisksResponse};
 use tonic::{Request, Response};
 
+use crate::auth::AuthService;
+
 /// Service represents the disk management service implementation
-#[derive(Debug, Default)]
-pub struct Service {}
+#[derive(Debug)]
+pub struct Service {
+    auth: Arc<AuthService>,
+}
 
 /// Creates a new Disks gRPC server instance using the default Service implementation
-pub fn service() -> disks_server::DisksServer<Service> {
-    disks_server::DisksServer::new(Service::default())
+pub fn service(auth: Arc<AuthService>) -> disks_server::DisksServer<Service> {
+    disks_server::DisksServer::new(Service { auth })
 }
 
 #[tonic::async_trait]
@@ -25,6 +32,8 @@ impl disks_server::Disks for Service {
     ///
     /// # Returns
     /// A Response containing ListDisksResponse with disk information, or a tonic::Status error
+
+    #[authorized("com.aerynos.lichen.disks.list")]
     async fn list_disks(
         &self,
         request: Request<ListDisksRequest>,

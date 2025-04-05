@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 disks.workspace = true
+lichen-macros = { path = "../crates/lichen-macros" }
 nix = { workspace = true, features = ["fs", "process", "signal"] }
 protocols = { path = "../crates/protocols", features = ["backend-utils"] }
 tokio = { workspace = true, features = ["full"] }

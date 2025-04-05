@@ -9,9 +9,10 @@
 //! for clients to interact with disk devices.
 
 use std::os::unix::fs::PermissionsExt;
+use std::sync::Arc;
 use std::{env, fs::File};
 
-use backend::auth::uds_interceptor;
+use backend::auth::{uds_interceptor, AuthService};
 use backend::{disk_service, system_service};
 use color_eyre::eyre::bail;
 use nix::libc::geteuid;
@@ -129,12 +130,14 @@ async fn main() -> Result<()> {
     let uds_stream = UnixListenerStream::new(listener);
     let (send, recv) = unbounded_channel();
 
+    let auth = Arc::new(AuthService::new());
+
     info!("🚀 Serving on /run/lichen.sock");
 
     Server::builder()
         .layer(interceptor(uds_interceptor))
-        .add_service(disk_service::service())
-        .add_service(system_service::service(send))
+        .add_service(disk_service::service(auth.clone()))
+        .add_service(system_service::service(auth.clone(), send))
         .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
         .await?;
 

@@ -31,3 +31,28 @@ pub fn uds_interceptor(mut request: Request<()>) -> Result<Request<()>, Status> 
         ))
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct AuthService {}
+
+impl Default for AuthService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AuthService {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    /// Attempt to verify the incoming request against not-yet-added requirements
+    pub async fn verify_request<T>(&self, request: Request<T>, action_id: &'static str) -> Result<Request<T>, Status> {
+        let info = request.extensions().get::<AuthInfo>();
+        tracing::warn!(action_id, "Verifying request for {:?}", info);
+        match info {
+            Some(AuthInfo::Unix { uid: _, gid: _, pid: _ }) => Ok(request),
+            None => Err(Status::unauthenticated("client socket unsupported")),
+        }
+    }
+}

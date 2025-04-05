@@ -6,3 +6,5 @@
 pub mod auth;
 pub mod disk_service;
 pub mod system_service;
+
+pub use lichen_macros::authorized;
