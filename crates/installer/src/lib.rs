@@ -5,7 +5,7 @@
 
 mod step;
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{HashMap, HashSet},
     env,
     path::Path,
 };
@@ -24,7 +24,8 @@ use tonic::transport::Channel;
 
 /// The installer workflow / mechanism
 pub struct Installer {
-    steps: BTreeMap<String, Box<dyn Step>>,
+    steps: HashMap<String, Box<dyn Step>>,
+    step_order: Vec<String>,
     channel: Channel,
     active_step: Option<String>,
     available_steps: HashSet<String>,
@@ -100,7 +101,9 @@ impl InstallerBuilder {
     /// Build the installer
     pub async fn build(self) -> Result<Installer, Error> {
         // Here we would load the step plugins based on their IDs
-        let mut steps = BTreeMap::new();
+        let mut steps = HashMap::new();
+        let step_order = self.step_ids.clone();
+
         for step_id in &self.step_ids {
             let step = get_step(step_id).ok_or_else(|| Error::StepLoadError(step_id.clone()))?;
             steps.insert(step_id.clone(), step);
@@ -116,6 +119,7 @@ impl InstallerBuilder {
 
         let installer = Installer {
             steps,
+            step_order,
             channel,
             active_step: self.active_step,
             available_steps,
@@ -153,7 +157,7 @@ impl Installer {
 
     /// Get all step IDs in order
     pub fn step_ids(&self) -> Vec<&String> {
-        self.steps.keys().collect()
+        self.step_order.iter().collect()
     }
 
     /// Get a step by ID
@@ -231,7 +235,7 @@ impl Installer {
     fn next_available_step_id(&self) -> Option<&String> {
         let current = self.active_step_id()?;
         let ids = self.step_ids();
-        let current_idx = ids.iter().position(|id| *id == current)?;
+        let current_idx = ids.iter().position(|id| **id == current)?;
 
         ids.iter()
             .skip(current_idx + 1)
@@ -242,7 +246,7 @@ impl Installer {
     fn previous_available_step_id(&self) -> Option<&String> {
         let current = self.active_step_id()?;
         let ids = self.step_ids();
-        let current_idx = ids.iter().position(|id| *id == current)?;
+        let current_idx = ids.iter().position(|id| **id == current)?;
 
         ids.iter()
             .take(current_idx)
