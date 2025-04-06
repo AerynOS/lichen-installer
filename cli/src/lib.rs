@@ -13,6 +13,7 @@ pub mod logging;
 
 pub enum FrontendStep {
     Disks,
+    Locale,
     Summary,
 }
 
@@ -21,6 +22,7 @@ impl FrontendStep {
         match self {
             Self::Disks => frontend::disks::run(info, installer).await?,
             Self::Summary => frontend::summary::run(installer).await?,
+            Self::Locale => frontend::locale::run(installer).await?,
         }
         Ok(())
     }

@@ -13,6 +13,7 @@ use protocols::lichen::osinfo::OsInfo;
 use crate::CliStep;
 
 pub mod disks;
+pub mod locale;
 pub mod summary;
 
 pub struct Frontend {
@@ -28,7 +29,6 @@ impl Frontend {
 
     // Render the current step
     fn render_step(step: &dyn Step) -> eyre::Result<()> {
-        cliclack::clear_screen()?;
         let info = step.info();
         let title = style(format!("  {}  ", info.title)).bold();
         let subtitle = style(info.description.clone()).dim();
@@ -49,8 +49,7 @@ impl Frontend {
         Ok(())
     }
 
-    // Step through the menu, returning the selected step ID
-    async fn step_menu(&mut self) -> eyre::Result<String> {
+    fn render_intro(&self) -> eyre::Result<()> {
         let identity = self.info.metadata.as_ref().and_then(|m| m.identity.as_ref());
         let os_name = identity.map(|i| i.display.clone()).unwrap_or("Unknown OS".into());
         let proj_name = identity.map(|i| i.name.clone()).unwrap_or("Unknown NAME".into());
@@ -65,32 +64,15 @@ impl Frontend {
             style("alpha").red()
         ))?;
 
-        let step_ids = self.installer.available_steps();
-        let steps = step_ids
-            .iter()
-            .filter_map(|id| {
-                let s = self.installer.step(id)?;
-                let info = s.info();
-                let title = style(info.title.clone()).bold();
-                Some((id, title, info.description.clone()))
-            })
-            .collect::<Vec<_>>();
-
-        let step_id = cliclack::select("Select a step to continue")
-            .items(&steps)
-            .interact()
-            .map_err(|_| eyre::eyre!("User aborted"))?;
-
-        Ok(step_id.to_string())
+        Ok(())
     }
 
     async fn run_internal(&mut self) -> eyre::Result<()> {
+        // Render the intro
+        self.render_intro()?;
+
+        // Process all intermediate steps
         loop {
-            // Build a virtual menu of steps
-            let step_id = self.step_menu().await?;
-
-            self.installer.goto_step(&step_id)?;
-
             let step = self
                 .installer
                 .active_step()
@@ -100,6 +82,8 @@ impl Frontend {
             if !self.installer.has_next() {
                 break;
             }
+
+            self.installer.next_step()?;
         }
 
         // Make the summary step available and go to it
@@ -115,8 +99,7 @@ impl Frontend {
 
     // Run the CLI installer
     pub async fn run(mut self) -> eyre::Result<()> {
-        let _ = self.run_internal().await;
-        //self.installer.shutdown().await?;
+        self.run_internal().await?;
         Ok(())
     }
 }
