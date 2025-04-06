@@ -59,15 +59,15 @@ async fn main() -> Result<()> {
     configure_tracing()?;
 
     let mut installer = Installer::builder()
-        .add_step("disks")
+        .add_step("storage")
         .add_step("locale")
         .add_step("summary")
-        .active_step("disks")
+        .active_step("storage")
         .build()
         .await?;
 
     // Make the first step available
-    installer.make_step_available("disks")?;
+    installer.make_step_available("storage")?;
     installer.make_step_available("locale")?;
 
     let mut system = installer.system().await?;

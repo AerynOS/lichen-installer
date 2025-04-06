@@ -56,12 +56,12 @@ fn render_disk(disk: &Disk) -> String {
 }
 
 register_step! {
-    id: "disks",
+    id: "storage",
     author: "AerynOS Developers",
     description: "Select the disk to install on",
     create: || Box::new(CliStep { info: DisplayInfo {
         title: "Disk selection".to_string(),
         description: "Select the disk to install on".to_string(),
         icon: None,
-    }, step: FrontendStep::Disks })
+    }, step: FrontendStep::Storage })
 }

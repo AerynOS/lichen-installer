@@ -12,7 +12,7 @@ pub mod frontend;
 pub mod logging;
 
 pub enum FrontendStep {
-    Disks,
+    Storage,
     Locale,
     Summary,
 }
@@ -20,7 +20,7 @@ pub enum FrontendStep {
 impl FrontendStep {
     async fn run(&self, info: &OsInfo, installer: &Installer) -> eyre::Result<()> {
         match self {
-            Self::Disks => frontend::disks::run(info, installer).await?,
+            Self::Storage => frontend::storage::run(info, installer).await?,
             Self::Summary => frontend::summary::run(installer).await?,
             Self::Locale => frontend::locale::run(installer).await?,
         }

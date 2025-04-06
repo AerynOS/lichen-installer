@@ -12,8 +12,8 @@ use protocols::lichen::osinfo::OsInfo;
 
 use crate::CliStep;
 
-pub mod disks;
 pub mod locale;
+pub mod storage;
 pub mod summary;
 
 pub struct Frontend {
