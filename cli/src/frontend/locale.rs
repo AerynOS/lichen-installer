@@ -4,7 +4,7 @@
 
 use std::env;
 
-use installer::{register_step, DisplayInfo, Installer, StepError};
+use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
 
 use crate::{CliStep, FrontendStep};
 
@@ -39,6 +39,6 @@ register_step! {
     create: || Box::new(CliStep { info: DisplayInfo {
         title: "Locale".to_string(),
         description: "Adjust the system locale".to_string(),
-        icon: None,
+        icon: Some(Icon::Emoji("🌎".to_string())),
     }, step: FrontendStep::Locale })
 }

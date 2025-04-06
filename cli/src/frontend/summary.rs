@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use installer::{register_step, DisplayInfo, Installer, StepError};
+use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
 use tracing::error;
 
 use crate::{CliStep, FrontendStep};
@@ -20,6 +20,6 @@ register_step! {
     create: || Box::new(CliStep { info: DisplayInfo {
         title: "Summary".to_string(),
         description: "Review the installation summary".to_string(),
-        icon: None,
+        icon: Some(Icon::Emoji("📝".to_string())),
     }, step: FrontendStep::Summary })
 }

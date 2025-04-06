@@ -6,8 +6,8 @@
 //! Frontend module
 
 use color_eyre::eyre;
-use console::style;
-use installer::{Installer, Step};
+use console::{style, Emoji};
+use installer::{Icon, Installer, Step};
 use protocols::lichen::osinfo::OsInfo;
 
 use crate::CliStep;
@@ -30,7 +30,13 @@ impl Frontend {
     // Render the current step
     fn render_step(step: &dyn Step) -> eyre::Result<()> {
         let info = step.info();
-        let title = style(format!("  {}  ", info.title)).bold();
+
+        let icon = match info.icon.as_ref() {
+            Some(Icon::Emoji(icon)) => format!("  {icon}  "),
+            _ => "".to_string(),
+        };
+
+        let title = style(format!("{}{}  ", Emoji(&icon, ""), info.title)).bold();
         let subtitle = style(info.description.clone()).dim();
         cliclack::intro(title)?;
         cliclack::log::remark(subtitle)?;

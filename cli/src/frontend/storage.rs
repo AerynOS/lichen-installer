@@ -8,7 +8,7 @@
 //! This module provides the disk selection step of the installation process,
 //! allowing users to choose which disk to install AerynOS on.
 
-use installer::{register_step, DisplayInfo, Installer, StepError};
+use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
 use protocols::lichen::{
     disks::{Disk, ListDisksRequest},
     osinfo::OsInfo,
@@ -62,6 +62,6 @@ register_step! {
     create: || Box::new(CliStep { info: DisplayInfo {
         title: "Disk selection".to_string(),
         description: "Select the disk to install on".to_string(),
-        icon: None,
+        icon: Some(Icon::Emoji("💾".to_string())),
     }, step: FrontendStep::Storage })
 }
