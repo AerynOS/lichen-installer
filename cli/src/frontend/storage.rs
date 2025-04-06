@@ -60,7 +60,7 @@ register_step! {
     author: "AerynOS Developers",
     description: "Select the disk to install on",
     create: || Box::new(CliStep { info: DisplayInfo {
-        title: "Disk selection".to_string(),
+        title: "Configure storage".to_string(),
         description: "Select the disk to install on".to_string(),
         icon: Some(Icon::Emoji("💾".to_string())),
     }, step: FrontendStep::Storage })
