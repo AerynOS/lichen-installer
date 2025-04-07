@@ -11,7 +11,7 @@ use std::{
 };
 
 use protocols::lichen::system::system_client;
-use protocols::lichen::{disks::disks_client, locales::locales_client};
+use protocols::lichen::{locales::locales_client, storage::disks::disks_client};
 pub use step::*;
 mod icon;
 pub use icon::*;

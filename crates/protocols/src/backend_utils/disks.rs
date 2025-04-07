@@ -7,7 +7,7 @@ use std::ops::Deref;
 
 use disks::BlockDevice;
 
-use crate::lichen::disks as proto_disks;
+use crate::lichen::storage::disks as proto_disks;
 
 /// Converts a disks::partition::Partition reference into a proto_disks::Partition
 ///

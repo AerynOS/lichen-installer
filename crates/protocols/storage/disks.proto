@@ -5,7 +5,7 @@
 
 syntax = "proto3";
 
-package lichen.disks;
+package lichen.storage.disks;
 
 service Disks {
     rpc ListDisks(ListDisksRequest) returns (ListDisksResponse) {}

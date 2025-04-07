@@ -24,7 +24,7 @@ use tonic::service::interceptor;
 use tonic::transport::Server;
 
 use color_eyre::Result;
-pub use protocols::lichen::disks;
+pub use protocols::lichen::storage::disks;
 use tracing::info;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};

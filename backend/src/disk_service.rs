@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use disks::BlockDevice;
 use lichen_macros::authorized;
-use protocols::lichen::disks::{disks_server, ListDisksRequest, ListDisksResponse};
+use protocols::lichen::storage::disks::{disks_server, ListDisksRequest, ListDisksResponse};
 use tonic::{Request, Response};
 
 use crate::auth::AuthService;

@@ -10,8 +10,8 @@
 
 use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
 use protocols::lichen::{
-    disks::{Disk, ListDisksRequest},
     osinfo::OsInfo,
+    storage::disks::{Disk, ListDisksRequest},
 };
 
 use crate::{CliStep, FrontendStep};

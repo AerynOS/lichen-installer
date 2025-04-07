@@ -20,9 +20,6 @@ use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 
 pub mod lichen {
-    pub mod disks {
-        tonic::include_proto!("lichen.disks");
-    }
     pub mod locales {
         tonic::include_proto!("lichen.locales");
     }
@@ -30,6 +27,9 @@ pub mod lichen {
         tonic::include_proto!("lichen.osinfo");
     }
     pub mod storage {
+        pub mod disks {
+            tonic::include_proto!("lichen.storage.disks");
+        }
         pub mod strategy {
             tonic::include_proto!("lichen.storage.strategy");
         }
