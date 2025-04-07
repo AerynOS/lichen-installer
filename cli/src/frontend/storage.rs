@@ -11,7 +11,10 @@
 use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
 use protocols::lichen::{
     osinfo::OsInfo,
-    storage::disks::{Disk, ListDisksRequest},
+    storage::{
+        disks::{Disk, ListDisksRequest},
+        provisioner::TryStrategyRequest,
+    },
 };
 
 use crate::{CliStep, FrontendStep};
@@ -38,10 +41,26 @@ pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> 
         .map(|i| i.display.clone())
         .unwrap_or("Unknown OS".into());
 
-    let _index = cliclack::select(format!("What disk would you like to install {os_name} on?"))
+    let index = cliclack::select(format!("What disk would you like to install {os_name} on?"))
         .items(&renderable_devices)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
+
+    let selected_disk = disks.disks.get(index).ok_or(StepError::UserAborted)?;
+    tracing::info!("Selected disk: {:?}", selected_disk.device);
+
+    let mut provisioner = installer.provisioner().await?;
+    let strategies = provisioner.list_strategies(()).await?.into_inner().strategies;
+    for s in &strategies {
+        tracing::info!("Computing disk strategy: {:?}", s);
+        let _plan = provisioner
+            .try_strategy(TryStrategyRequest {
+                strategy: s.name.clone(),
+                disks: vec![selected_disk.device.clone()],
+            })
+            .await?
+            .into_inner();
+    }
 
     Ok(())
 }
@@ -49,7 +68,7 @@ pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> 
 fn render_disk(disk: &Disk) -> String {
     format!(
         "{} - {} - {}",
-        disk.name,
+        disk.device,
         disk.model.as_deref().unwrap_or("Unknown"),
         disk.display_size
     )

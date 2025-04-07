@@ -6,6 +6,7 @@
 mod step;
 use std::collections::{HashMap, HashSet};
 
+use protocols::lichen::storage::provisioner::provisioner_client;
 use protocols::lichen::system::system_client;
 use protocols::lichen::{locales::locales_client, storage::disks::disks_client};
 pub use step::*;
@@ -241,6 +242,12 @@ impl Installer {
     /// Grab a disks RPC client
     pub async fn disks(&self) -> Result<disks_client::DisksClient<Channel>, Error> {
         let client = disks_client::DisksClient::new(self.channel.clone());
+        Ok(client)
+    }
+
+    /// Grab a provisioner RPC client
+    pub async fn provisioner(&self) -> Result<provisioner_client::ProvisionerClient<Channel>, Error> {
+        let client = provisioner_client::ProvisionerClient::new(self.channel.clone());
         Ok(client)
     }
 
