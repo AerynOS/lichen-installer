@@ -5,9 +5,9 @@
 
 syntax = "proto3";
 
-// Package lichen.storage.strategy defines protocol buffer messages for disk
+// Package lichen.storage.types defines protocol buffer messages for disk
 // partitioning and storage management operations.
-package lichen.storage.strategy;
+package lichen.storage.types;
 
 // Uuid represents a universally unique identifier.
 message Uuid {
