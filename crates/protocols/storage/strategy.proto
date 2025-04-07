@@ -1,0 +1,130 @@
+// SPDX-FileCopyrightText: Copyright © 2025 Serpent OS Developers
+// SPDX-FileCopyrightText: Copyright © 2025 AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+// Package lichen.storage.strategy defines protocol buffer messages for disk
+// partitioning and storage management operations.
+package lichen.storage.strategy;
+
+// Uuid represents a universally unique identifier.
+message Uuid {
+    // The string representation of the UUID
+    string uuid = 1;
+}
+
+// OperatingSystem defines the type of operating system and related information
+// for a partition.
+message OperatingSystem {
+    // Type enumerates the different operating systems that can be associated
+    // with a partition.
+    enum Kind {
+        OS_NONE = 0;           // No operating system specified
+        OS_ANDROID = 1;        // Android operating system
+        OS_ATARI = 2;          // Atari operating system
+        OS_CEPH = 3;           // Ceph storage system
+        OS_CHROME = 4;         // Chrome OS
+        OS_CORE_OS = 5;        // CoreOS
+        OS_FREE_BSD = 7;       // FreeBSD
+        OS_FREE_DESKTOP = 8;   // FreeDesktop
+        OS_HAIKU = 9;          // Haiku operating system
+        OS_HP_UNIX = 10;       // HP-UX
+        OS_LINUX = 11;         // Linux
+        OS_MIDNIGHT_BSD = 12;  // MidnightBSD
+        OS_MAC_OS = 13;        // macOS
+        OS_NET_BSD = 14;       // NetBSD
+        OS_ONIE = 15;          // Open Network Install Environment
+        OS_OPEN_BSD = 16;      // OpenBSD
+        OS_PLAN9 = 17;         // Plan 9
+        OS_POWER_PC = 18;      // PowerPC
+        OS_SOLARIS = 19;       // Solaris
+        OS_VM_WARE = 20;       // VMware
+        OS_WINDOWS = 21;       // Windows
+        OS_QNX = 22;           // QNX
+        OS_DRAGONFLY_BSD = 23; // DragonFly BSD
+  }
+
+  // The type of operating system
+  Kind kind = 1;
+
+  // Custom operating system name, used when kind doesn't provide a specific match
+  optional string CustomOS = 2;
+}
+
+// PartitionRole defines the functional role of a partition in the system.
+enum PartitionRole {
+  PARTITION_ROLE_NONE = 0;          // No specific role
+  PARTITION_ROLE_BOOT = 1;          // Boot partition
+  PARTITION_ROLE_EXTENDED_BOOT = 2; // Extended boot partition (e.g., EFI System Partition)
+  PARTITION_ROLE_ROOT = 3;          // Root partition (/)
+  PARTITION_ROLE_HOME = 4;          // Home partition (/home)
+  PARTITION_ROLE_SWAP = 5;          // Swap partition
+  PARTITION_ROLE_CUSTOM = 6;        // Custom role with user-defined mountpoint
+}
+
+// CustomPartitionRole defines attributes for a partition with a custom role.
+message CustomPartitionRole {
+  // The mountpoint for the custom partition (e.g., /var, /opt)
+  string mountpoint = 1;
+}
+
+// GptPartitionType defines type information for a GPT partition.
+message GptPartitionType {
+    // Operating system associated with this partition type
+    OperatingSystem os = 1;
+
+    // The UUID representing the GPT partition type
+    Uuid uuid = 2;
+}
+
+// GptTableAttributes defines GPT-specific partition table attributes.
+message GptTableAttributes {
+    // The type of the partition
+    GptPartitionType type = 1;
+
+    // Optional friendly name for the partition
+    optional string name = 2;
+
+    // Optional UUID for the partition
+    optional Uuid uuid = 3;
+}
+
+// PartitionAttributes describes the attributes that can be assigned to a partition.
+message PartitionAttributes {
+    // Table-specific attributes, currently only supports GPT
+    oneof table_attributes {
+        GptTableAttributes gpt_table_attributes = 1;
+    }
+
+    // The functional role of this partition in the system
+    optional PartitionRole role = 2;
+
+    // Custom role information, required when role is PARTITION_ROLE_CUSTOM
+    optional CustomPartitionRole custom_role = 3;
+}
+
+// AddPartitionChange represents an operation to add a new partition.
+message AddPartitionChange {
+  // Start sector of the partition
+  uint64 start = 1;
+
+  // End sector of the partition
+  uint64 end = 2;
+
+  // Unique identifier for the new partition
+  uint32 partition_id = 3;
+
+  // Optional attributes for the new partition
+  optional PartitionAttributes attributes = 4;
+}
+
+// DeletePartitionChange represents an operation to delete an existing partition.
+message DeletePartitionChange {
+  // Original index of the partition in the partition table
+  uint32 original_index = 1;
+
+  // Unique identifier of the partition to delete
+  uint32 partition_id = 2;
+}

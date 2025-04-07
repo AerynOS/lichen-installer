@@ -29,6 +29,11 @@ pub mod lichen {
     pub mod osinfo {
         tonic::include_proto!("lichen.osinfo");
     }
+    pub mod storage {
+        pub mod strategy {
+            tonic::include_proto!("lichen.storage.strategy");
+        }
+    }
     pub mod system {
         tonic::include_proto!("lichen.system");
     }

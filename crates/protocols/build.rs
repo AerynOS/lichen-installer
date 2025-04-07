@@ -8,11 +8,18 @@ fn main() {
     println!("cargo:rerun-if-changed=locales.proto");
     println!("cargo:rerun-if-changed=osinfo.proto");
     println!("cargo:rerun-if-changed=system.proto");
+    println!("cargo:rerun-if-changed=storage/strategy.proto");
 
     tonic_build::configure()
         .build_server(true)
         .compile_protos(
-            &["disks.proto", "locales.proto", "osinfo.proto", "system.proto"],
+            &[
+                "disks.proto",
+                "locales.proto",
+                "osinfo.proto",
+                "system.proto",
+                "storage/strategy.proto",
+            ],
             &["."],
         )
         .unwrap();
