@@ -4,11 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 mod step;
-use std::{
-    collections::{HashMap, HashSet},
-    env,
-    path::Path,
-};
+use std::collections::{HashMap, HashSet};
 
 use protocols::lichen::system::system_client;
 use protocols::lichen::{locales::locales_client, storage::disks::disks_client};
@@ -33,7 +29,6 @@ pub struct Installer {
 
 /// Builder for Installer
 pub struct InstallerBuilder {
-    backend_path: Option<Box<Path>>,
     step_ids: Vec<String>,
     active_step: Option<String>,
 }
@@ -52,14 +47,11 @@ pub enum NavigationError {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Failed to connect to the privileged service")]
+    #[error(transparent)]
     ConnectionError(#[from] protocols::Error),
 
     #[error("Backend error: {0}")]
     BackendError(#[from] tonic::Status),
-
-    #[error("Missing backend path")]
-    MissingBackendPath,
 
     #[error("Failed to load step plugin: {0}")]
     StepLoadError(String),
@@ -72,18 +64,9 @@ impl InstallerBuilder {
     /// Create a new installer builder
     fn new() -> Self {
         Self {
-            backend_path: env::current_exe()
-                .map(|p| p.with_file_name("lichen_backend").into())
-                .ok(),
             step_ids: Vec::new(),
             active_step: None,
         }
-    }
-
-    /// Set the backend path
-    pub fn backend_path(mut self, path: &Path) -> Self {
-        self.backend_path = Some(Box::from(path));
-        self
     }
 
     /// Add a step by ID
