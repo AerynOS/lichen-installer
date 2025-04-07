@@ -3,6 +3,8 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+mod builtin_strategies;
+
 pub mod auth;
 pub mod disk_service;
 pub mod locales_service;
