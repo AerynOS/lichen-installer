@@ -10,7 +10,7 @@ tracing.workspace = true
 inventory.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full"] }
-tonic.workspace = true
+tonic = { workspace = true, features = ["transport"] }
 
 [lints]
 workspace = true

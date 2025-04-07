@@ -16,7 +16,7 @@ nix = { workspace = true, features = ["fs", "process", "signal"] }
 protocols = { path = "../crates/protocols", features = ["backend-utils"] }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream.workspace = true
-tonic = { workspace = true, features = ["server"] }
+tonic = { workspace = true, features = ["server", "transport"] }
 tower.workspace = true
 os-info.workspace = true
 
