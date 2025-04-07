@@ -5,15 +5,10 @@
 
 #![allow(unused_qualifications)]
 
-pub mod privileged;
-
 #[cfg(feature = "backend-utils")]
 pub mod backend_utils;
 
-use std::{path::Path, sync::Arc};
-
 use hyper_util::rt::TokioIo;
-use privileged::{PkexecExecutor, ServiceConnection};
 use thiserror::Error;
 use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
@@ -47,8 +42,6 @@ pub enum Error {
     Tonic(#[from] tonic::transport::Error),
     #[error("Uri error: {0}")]
     Uri(#[from] http::Error),
-    #[error("Privileged error: {0}")]
-    Privileged(#[from] privileged::Error),
 }
 
 /// Create a new channel to the Unix domain socket server.
@@ -65,37 +58,5 @@ pub async fn unix_channel(whence: &str) -> Result<Channel, Error> {
             Ok::<_, std::io::Error>(res)
         }))
         .await?;
-    Ok(channel)
-}
-
-pub fn create_service_connection(executable: impl AsRef<Path>) -> Result<Arc<ServiceConnection>, Error> {
-    let path = executable.as_ref().to_string_lossy().to_string();
-    let connection = Arc::new(
-        ServiceConnection::new::<PkexecExecutor>(&path, &[])
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?,
-    );
-    connection.socket.set_nonblocking(true)?;
-    Ok(connection)
-}
-
-pub async fn service_connection_to_channel(connection: Arc<ServiceConnection>, path: String) -> Result<Channel, Error> {
-    let encoded_uri = Uri::builder()
-        .scheme("http")
-        .authority("localhost:50051")
-        .path_and_query(path)
-        .build()?;
-
-    let connection_clone = Arc::clone(&connection);
-    let channel = Endpoint::from(encoded_uri)
-        .connect_with_connector(service_fn(move |_: Uri| {
-            let connection = Arc::clone(&connection_clone);
-            async move {
-                let stream = UnixStream::from_std(connection.socket.try_clone()?)?;
-                let res = TokioIo::new(stream);
-                Ok::<_, std::io::Error>(res)
-            }
-        }))
-        .await?;
-
     Ok(channel)
 }

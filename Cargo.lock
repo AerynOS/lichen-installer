@@ -148,7 +148,7 @@ dependencies = [
  "disks",
  "lichen-macros",
  "locales-rs",
- "nix 0.29.0",
+ "nix",
  "os-info",
  "protocols",
  "tokio",
@@ -292,16 +292,6 @@ dependencies = [
  "owo-colors",
  "tracing-core",
  "tracing-error",
-]
-
-[[package]]
-name = "command-fds"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bb11bd1378bf3731b182997b40cefe00aba6a6cc74042c8318c1b271d3badf7"
-dependencies = [
- "nix 0.27.1",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -831,7 +821,7 @@ version = "0.1.0"
 dependencies = [
  "inventory",
  "protocols",
- "thiserror 2.0.12",
+ "thiserror",
  "tokio",
  "tonic",
  "tracing",
@@ -912,7 +902,7 @@ dependencies = [
  "fs-err",
  "serde",
  "serde_json",
- "thiserror 2.0.12",
+ "thiserror",
 ]
 
 [[package]]
@@ -986,17 +976,6 @@ checksum = "defc4c55412d89136f966bbb339008b474350e5e6e78d2714439c386b3137a03"
 
 [[package]]
 name = "nix"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eb04e9c688eff1c89d72b407f168cf79bb9e867a9d3323ed6c01519eb9cc053"
-dependencies = [
- "bitflags",
- "cfg-if",
- "libc",
-]
-
-[[package]]
-name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71e2746dc3a24dd78b3cfcb7be93368c6de9963d30f43a6a73998a9cf4b17b46"
@@ -1055,7 +1034,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
- "thiserror 2.0.12",
+ "thiserror",
 ]
 
 [[package]]
@@ -1231,15 +1210,13 @@ dependencies = [
 name = "protocols"
 version = "0.1.0"
 dependencies = [
- "command-fds",
  "disks",
  "http",
  "hyper-util",
  "locales-rs",
- "nix 0.29.0",
  "os-info",
  "prost",
- "thiserror 2.0.12",
+ "thiserror",
  "tokio",
  "tonic",
  "tonic-build",
@@ -1546,31 +1523,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
 dependencies = [
- "thiserror-impl 2.0.12",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "thiserror-impl",
 ]
 
 [[package]]
