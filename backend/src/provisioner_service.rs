@@ -55,7 +55,17 @@ impl provisioner_server::Provisioner for Service {
         _request: Request<()>,
     ) -> Result<Response<provisioner::ListStrategiesResponse>, tonic::Status> {
         trace!("Listing available provisioning strategies");
-        let response = provisioner::ListStrategiesResponse { strategies: vec![] };
+        let strategies = self
+            .builtin_strategies
+            .iter()
+            .map(|(name, strategy)| provisioner::StrategyDefinition {
+                id: name.clone(),
+                name: strategy.name.clone(),
+                description: strategy.summary.clone(),
+                inherits: strategy.inherits.clone(),
+            })
+            .collect();
+        let response = provisioner::ListStrategiesResponse { strategies };
         Ok(Response::new(response))
     }
 
