@@ -1,0 +1,45 @@
+// SPDX-FileCopyrightText: Copyright © 2025 Serpent OS Developers
+// SPDX-FileCopyrightText: Copyright © 2025 AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package lichen.storage.provisioner;
+
+import "google/protobuf/empty.proto";
+
+// Encapsulates the definition of a strategy for disk partitioning and management
+// Stored in `.kdl` files, loaded by lichen's backend via disks-rs provisioner
+message StrategyDefinition {
+    string id = 1; // Unique identifier for the strategy
+
+    string name = 2;
+    string description = 3;
+
+    optional string inherits = 4;
+}
+
+service Provisioner {
+    // List all available strategies
+    rpc ListStrategies(google.protobuf.Empty) returns (ListStrategiesResponse) {}
+    rpc TryStrategy(TryStrategyRequest) returns (TryStrategyResponse) {}
+}
+
+// Response message for ListStrategies
+message ListStrategiesResponse {
+    repeated StrategyDefinition strategies = 1;
+}
+
+// Request message for TryStrategy
+message TryStrategyRequest {
+    // Name of the strategy to try
+    string strategy = 1;
+
+    // List of disks to consider for the strategy
+    repeated string disks = 2;
+}
+
+// Response message for TryStrategy
+message TryStrategyResponse {
+}

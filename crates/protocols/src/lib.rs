@@ -25,6 +25,9 @@ pub mod lichen {
         pub mod disks {
             tonic::include_proto!("lichen.storage.disks");
         }
+        pub mod provisioner {
+            tonic::include_proto!("lichen.storage.provisioner");
+        }
         pub mod types {
             tonic::include_proto!("lichen.storage.types");
         }
