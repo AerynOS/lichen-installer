@@ -43,7 +43,7 @@ pub mod lichen {
 pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("Tonic error: {0}")]
+    #[error(transparent)]
     Tonic(#[from] tonic::transport::Error),
     #[error("Uri error: {0}")]
     Uri(#[from] http::Error),
