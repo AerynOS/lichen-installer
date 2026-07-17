@@ -3,43 +3,46 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::{collections::HashMap, sync::Arc};
-
+use crate::{auth::AuthService, builtin_strategies, plans};
+use disks::BlockDevice;
+use lichen_macros::authorized;
 use protocols::lichen::storage::provisioner::{
     self,
     provisioner_server::{self, ProvisionerServer},
+    ApplyStrategyRequest, ApplyStrategyResponse, ListStrategiesResponse, TryStrategyRequest, TryStrategyResponse,
 };
-use tonic::{Request, Response};
+use provisioning::{Parser, StrategyDefinition};
+use std::{collections::HashMap, path::Path, sync::Arc};
+use tonic::{Request, Response, Status};
 use tracing::{debug, info, trace};
-
-use crate::{auth::AuthService, builtin_strategies};
 
 #[derive(Debug)]
 pub struct Service {
-    _auth: Arc<AuthService>,
-    builtin_strategies: HashMap<String, provisioning::StrategyDefinition>,
+    auth: Arc<AuthService>,
+    builtin_strategies: HashMap<String, StrategyDefinition>,
 }
 
 /// Creates a new gRPC server instance using the default Service implementation
 pub async fn service(auth: Arc<AuthService>) -> color_eyre::Result<ProvisionerServer<Service>> {
     let mut inner = Service {
-        _auth: auth.clone(),
+        auth: auth.clone(),
         builtin_strategies: HashMap::new(),
     };
 
     // Load builtin strategies
-    for b in builtin_strategies::ALL {
-        debug!("Loading builtin strategy: {}", b.name);
-        let parser = provisioning::Parser::new(b.name, b.contents)?;
-        let n_strategies = parser.strategies.len();
-        for strategy in parser.strategies {
+    for builtin in builtin_strategies::ALL {
+        debug!("Loading builtin strategy: {}", builtin.name);
+        let parser = Parser::new(builtin.name, builtin.contents)?;
+        let n_strats = parser.strategies.len();
+
+        for strat in parser.strategies {
             info!(
-                filename = b.name,
-                strategies = n_strategies,
+                filename = builtin.name,
+                strategies = n_strats,
                 "Loaded strategy: {}",
-                strategy.name
+                strat.name,
             );
-            inner.builtin_strategies.insert(strategy.name.clone(), strategy);
+            inner.builtin_strategies.insert(strat.name.clone(), strat);
         }
     }
 
@@ -48,13 +51,29 @@ pub async fn service(auth: Arc<AuthService>) -> color_eyre::Result<ProvisionerSe
     Ok(server)
 }
 
+impl Service {
+    /// Discover block devices and select exactly the requested /dev paths
+    fn selected_devices(&self, requested: &[String]) -> Result<Vec<BlockDevice>, Status> {
+        if requested.is_empty() {
+            return Err(Status::invalid_argument("no disks provided"));
+        }
+
+        let mut devices = BlockDevice::discover()?;
+        devices.retain(|dev| requested.iter().any(|path| Path::new(path) == dev.device()));
+
+        if devices.len() != requested.len() {
+            return Err(Status::not_found("one or more requested disks were not found"));
+        }
+
+        Ok(devices)
+    }
+}
+
 #[tonic::async_trait]
 impl provisioner_server::Provisioner for Service {
-    async fn list_strategies(
-        &self,
-        _request: Request<()>,
-    ) -> Result<Response<provisioner::ListStrategiesResponse>, tonic::Status> {
+    async fn list_strategies(&self, _request: Request<()>) -> Result<Response<ListStrategiesResponse>, Status> {
         trace!("Listing available provisioning strategies");
+
         let strategies = self
             .builtin_strategies
             .iter()
@@ -65,16 +84,53 @@ impl provisioner_server::Provisioner for Service {
                 inherits: strategy.inherits.clone(),
             })
             .collect();
-        let response = provisioner::ListStrategiesResponse { strategies };
+
+        let response = ListStrategiesResponse { strategies };
+
         Ok(Response::new(response))
     }
 
+    #[authorized("com.aerynos.lichen.provisioner.try")]
     async fn try_strategy(
         &self,
-        _request: Request<provisioner::TryStrategyRequest>,
-    ) -> Result<Response<provisioner::TryStrategyResponse>, tonic::Status> {
-        trace!("Trying provisioning strategy");
-        let response = provisioner::TryStrategyResponse {};
-        Ok(Response::new(response))
+        request: Request<TryStrategyRequest>,
+    ) -> Result<Response<TryStrategyResponse>, tonic::Status> {
+        let req = request.into_inner();
+
+        trace!(strategy = req.strategy, "Trying provisioning strategy");
+
+        if !self.builtin_strategies.contains_key(&req.strategy) {
+            return Err(Status::not_found(format!("unknown strategy: {}", req.strategy)));
+        }
+
+        let devices = self.selected_devices(&req.disks)?;
+        let plans = plans::try_strategy(&self.builtin_strategies, &req.strategy, &devices);
+
+        Ok(Response::new(TryStrategyResponse { plans }))
+    }
+
+    #[authorized("com.aerynos.lichen.provisioner.apply")]
+    async fn apply_strategy(
+        &self,
+        request: Request<ApplyStrategyRequest>,
+    ) -> Result<Response<ApplyStrategyResponse>, tonic::Status> {
+        let req = request.into_inner();
+
+        info!(
+            strategy = req.strategy,
+            disks = ?req.disks,
+            "Applying provisioning strategy (destructive)"
+        );
+
+        if !self.builtin_strategies.contains_key(&req.strategy) {
+            return Err(Status::not_found(format!("unknown strategy: {}", req.strategy)));
+        }
+
+        let plan = tokio::task::block_in_place(|| {
+            let devices = self.selected_devices(&req.disks)?;
+            plans::apply_strategy(&self.builtin_strategies, &req.strategy, &devices)
+        })?;
+
+        Ok(Response::new(ApplyStrategyResponse { plan: Some(plan) }))
     }
 }

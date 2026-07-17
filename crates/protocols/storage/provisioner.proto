@@ -8,6 +8,7 @@ syntax = "proto3";
 package lichen.storage.provisioner;
 
 import "google/protobuf/empty.proto";
+import "storage/types.proto";
 
 // Encapsulates the definition of a strategy for disk partitioning and management
 // Stored in `.kdl` files, loaded by lichen's backend via disks-rs provisioner
@@ -24,6 +25,7 @@ service Provisioner {
     // List all available strategies
     rpc ListStrategies(google.protobuf.Empty) returns (ListStrategiesResponse) {}
     rpc TryStrategy(TryStrategyRequest) returns (TryStrategyResponse) {}
+    rpc ApplyStrategy(ApplyStrategyRequest) returns (ApplyStrategyResponse) {}
 }
 
 // Response message for ListStrategies
@@ -40,6 +42,79 @@ message TryStrategyRequest {
     repeated string disks = 2;
 }
 
+// A single planned mutation of a partition table
+message PlannedChange {
+    oneof change {
+        lichen.storage.types.AddPartitionChange add_partition = 1;
+        lichen.storage.types.DeletePartitionChange delete_partition = 2;
+    }
+
+    // Human readable single line description of this change
+    string description = 3;
+}
+
+// The ordered set of changes planned for one disk
+message DiskPlan {
+    // Path to the disk in /dev
+    string device = 1;
+
+    // Ordered changes to apply to the disk
+    repeated PlannedChange changes = 2;
+
+    // Multi-line summary of all changes
+    string description = 3;
+}
+
+// A filesystem that will be created on a partition
+message PlannedFilesystem {
+    // Path to the partition device in /dev
+    string device = 1;
+
+    // The filesystem to create
+    lichen.storage.types.Filesystem filesystem = 2;
+}
+
+// Binds a partition role to the partition device implementing it
+message RoleMount {
+    // The role of the partition
+    lichen.storage.types.PartitionRole role = 1;
+
+    // Path to the partition device in /dev
+    string device = 2;
+
+    // Mountpoint relative to the installation root
+    string mountpoint = 3;
+}
+
+// A fully resolved application of a strategy to a set of disks
+message StrategyPlan {
+    // Per-disk partitioning changes
+    repeated DiskPlan disk_plans = 1;
+
+    // Filesystems to create once partitioning is applied
+    repeated PlannedFilesystem filesystems = 2;
+
+    // Mapping of partition roles to devices and mountpoints
+    repeated RoleMount role_mounts = 3;
+}
+
 // Response message for TryStrategy
 message TryStrategyResponse {
+    // All viable plans for the requested strategy and disks.
+    // Empty when the strategy cannot be applied.
+    repeated StrategyPlan plans = 1;
+}
+
+// Request message for ApplyStrategy
+message ApplyStrategyRequest {
+    string strategy = 1;
+
+    // List of disks in /dev the strategy may use
+    repeated string disks = 2;
+}
+
+// Response message for ApplyStrategy
+message ApplyStrategyResponse {
+    // The plan that was applied
+    StrategyPlan plan = 1;
 }

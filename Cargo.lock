@@ -200,6 +200,7 @@ dependencies = [
  "locales-rs",
  "nix",
  "os-info",
+ "partitioning",
  "protocols",
  "provisioning",
  "tokio",
