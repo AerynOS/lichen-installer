@@ -10,7 +10,7 @@
 
 use disks::BlockDevice;
 use partitioning::{
-    blkpg, gpt::partition_types::OperatingSystem, planner::Change, writer::DiskWriter, Formatter, GptAttributes,
+    gpt::partition_types::OperatingSystem, planner::Change, writer::DiskWriter, Formatter, GptAttributes,
     PartitionAttributes,
 };
 use protocols::lichen::storage::{
@@ -92,8 +92,6 @@ pub(crate) fn apply_strategy(
         DiskWriter::new(device_plan.device, &device_plan.planner)
             .write()
             .map_err(|err| Status::internal(format!("failed to partition {disk}: {err}")))?;
-        blkpg::sync_gpt_partitions(device_plan.device.device())
-            .map_err(|err| Status::internal(format!("failed to sync partions for {disk}: {err}")))?;
     }
 
     for (device, filesystem) in &plan.filesystems {
