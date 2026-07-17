@@ -14,8 +14,7 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // Create the ESP
     create-partition disk="root_disk" role="boot" id="esp" {
         constraints {
-            min (GiB)1
-            max (GiB)2
+            exactly (MiB)256
         }
         type (GUID)"efi-system-partition"
         filesystem {
@@ -27,8 +26,7 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // Create xbootldr
     create-partition disk="root_disk" role="extended-boot" id="xbootldr" {
         constraints {
-            min (GiB)2
-            max (GiB)4
+            exactly (MiB)3840
         }
         type (GUID) "linux-extended-boot"
         filesystem {
@@ -41,7 +39,6 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     create-partition disk="root_disk" id="root" role="root" {
         constraints {
             min (GiB)25
-            max (GiB)120
         }
         type (GUID)"linux-fs"
         filesystem {
