@@ -103,6 +103,9 @@ message PartitionAttributes {
 
     // Custom role information, required when role is PARTITION_ROLE_CUSTOM
     optional CustomPartitionRole custom_role = 3;
+
+    // Filesystem to create on this partition
+    optional Filesystem filesystem = 4;
 }
 
 // AddPartitionChange represents an operation to add a new partition.
@@ -127,4 +130,16 @@ message DeletePartitionChange {
 
   // Unique identifier of the partition to delete
   uint32 partition_id = 2;
+}
+
+// Filesystem describes a filesystem to be created on a partition.
+message Filesystem {
+    // Lowercase filesystem type name
+    string filesystem_type = 1;
+
+    // Optional filesystem label
+    optional string label = 2;
+
+    // Optional filesystem UUID
+    optional string uuid = 3;
 }
