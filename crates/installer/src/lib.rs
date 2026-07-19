@@ -6,9 +6,10 @@
 mod step;
 use std::collections::{HashMap, HashSet};
 
-use protocols::lichen::storage::provisioner::provisioner_client;
-use protocols::lichen::system::system_client;
-use protocols::lichen::{locales::locales_client, storage::disks::disks_client};
+use protocols::lichen::{
+    install::install_client::InstallClient, locales::locales_client, storage::disks::disks_client,
+    storage::provisioner::provisioner_client, system::system_client,
+};
 pub use step::*;
 mod icon;
 pub use icon::*;
@@ -248,6 +249,12 @@ impl Installer {
     /// Grab a provisioner RPC client
     pub async fn provisioner(&self) -> Result<provisioner_client::ProvisionerClient<Channel>, Error> {
         let client = provisioner_client::ProvisionerClient::new(self.channel.clone());
+        Ok(client)
+    }
+
+    /// Grab an install RPC client
+    pub async fn install(&self) -> Result<InstallClient<Channel>, Error> {
+        let client = InstallClient::new(self.channel.clone());
         Ok(client)
     }
 

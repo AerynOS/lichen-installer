@@ -2,17 +2,18 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::env;
-
-use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
+use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
 
 use crate::{CliStep, FrontendStep};
 
-pub async fn run(installer: &Installer) -> Result<(), StepError> {
+pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepError> {
+    if model.imported && !model.region.language.is_empty() {
+        let _ = cliclack::log::info(format!("Using imported locale {}", model.region.language));
+        return Ok(());
+    }
+
     let mut locales = installer.locales().await?;
     let locale_list = locales.list_locales(()).await?.into_inner();
-    let default_option = env::var("LANG").unwrap_or_else(|_| "en_US.UTF-8".to_string());
-
     let display_list = locale_list
         .locales
         .iter()
@@ -21,13 +22,13 @@ pub async fn run(installer: &Installer) -> Result<(), StepError> {
 
     let picked = cliclack::select("Select your locale")
         .items(&display_list)
-        .initial_value(default_option)
         .filter_mode()
         .set_size(12)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
 
     tracing::info!("Selected locale {picked}");
+    model.region.language = picked;
 
     Ok(())
 }
@@ -35,7 +36,7 @@ pub async fn run(installer: &Installer) -> Result<(), StepError> {
 register_step! {
     id: "locale",
     author: "AerynOS Developers",
-    description: "Review the installation summary",
+    description: "Select the system locale",
     create: || Box::new(CliStep { info: DisplayInfo {
         title: "Locale".to_string(),
         description: "Adjust the system locale".to_string(),

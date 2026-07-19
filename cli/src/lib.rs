@@ -5,24 +5,32 @@
 
 use async_trait::async_trait;
 use color_eyre::eyre;
-use installer::{DisplayInfo, Installer, Step};
+use installer::{DisplayInfo, Installer, Model, Step};
 use protocols::lichen::osinfo::OsInfo;
 
 pub mod frontend;
 pub mod logging;
+pub mod selections;
+pub mod system_model;
 
 pub enum FrontendStep {
     Storage,
     Locale,
+    Timezone,
+    Desktop,
+    Accounts,
     Summary,
 }
 
 impl FrontendStep {
-    async fn run(&self, info: &OsInfo, installer: &Installer) -> eyre::Result<()> {
+    async fn run(&self, info: &OsInfo, installer: &Installer, model: &mut Model) -> eyre::Result<()> {
         match self {
-            Self::Storage => frontend::storage::run(info, installer).await?,
-            Self::Summary => frontend::summary::run(installer).await?,
-            Self::Locale => frontend::locale::run(installer).await?,
+            Self::Storage => frontend::storage::run(info, installer, model).await?,
+            Self::Locale => frontend::locale::run(installer, model).await?,
+            Self::Timezone => frontend::timezone::run(installer, model).await?,
+            Self::Desktop => frontend::desktop::run(installer, model).await?,
+            Self::Accounts => frontend::accounts::run(installer, model).await?,
+            Self::Summary => frontend::summary::run(installer, model).await?,
         }
         Ok(())
     }

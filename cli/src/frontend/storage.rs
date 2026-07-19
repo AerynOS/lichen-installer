@@ -8,18 +8,18 @@
 //! allowing users to choose which disk to install AerynOS on, preview the
 //! partitioning strategy, and apply it.
 
-use crate::{CliStep, FrontendStep};
-use installer::{register_step, DisplayInfo, Icon, Installer, StepError};
+use crate::{CliStep, FrontendStep, system_model};
+use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
 use protocols::lichen::{
     osinfo::OsInfo,
     storage::{
         disks::{Disk, ListDisksRequest},
-        provisioner::{ApplyStrategyRequest, StrategyPlan, TryStrategyRequest},
+        provisioner::{StrategyPlan, TryStrategyRequest},
     },
 };
 use std::env;
 
-pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> {
+pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Result<(), StepError> {
     // Grab the list of disks. Loopback devices stay hidden unless explicitly
     // requested, which allows safe end-to-end testing against a losetup disk.
     let mut client = installer.disks().await?;
@@ -40,8 +40,14 @@ pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> 
         .and_then(|meta| meta.identity.as_ref())
         .map(|ident| ident.display.clone())
         .unwrap_or("Unknown OS".into());
+    let initial_idx = disks
+        .disks
+        .iter()
+        .position(|disk| disk.device == model.storage.disk)
+        .unwrap_or(0);
     let idx = cliclack::select(format!("What disk would you like to install {os_name} on?"))
         .items(&renderable_devices)
+        .initial_value(initial_idx)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
     let selected_disk = disks.disks.get(idx).ok_or(StepError::UserAborted)?;
@@ -76,16 +82,65 @@ pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> 
         )));
     }
 
-    let items = viable
+    // Look for a system model left by a previous installation on this disk
+    let mut install = installer.install().await?;
+    let discovered = install
+        .discover_system_models(())
+        .await?
+        .into_inner()
+        .models
+        .into_iter()
+        .find(|model| selected_disk.partitions.iter().any(|part| part.device == model.device));
+    let mut items = viable
         .iter()
         .enumerate()
         .map(|(idx, (strat, _))| (idx, strat.name.clone(), strat.description.clone()))
         .collect::<Vec<_>>();
+    let refresh_idx = viable.len();
+
+    if discovered.is_some() {
+        items.push((
+            refresh_idx,
+            "Refresh OS".to_string(),
+            "Reinstall using the settings and package selection found on the disk".to_string(),
+        ));
+    }
+
+    let init_choice = if model.imported {
+        viable
+            .iter()
+            .position(|(strat, _)| strat.id == model.storage.strategy_id)
+            .unwrap_or(0)
+    } else if discovered.is_some() {
+        refresh_idx
+    } else {
+        0
+    };
+
     let choice = cliclack::select("How should the disk be partitioned?")
         .items(&items)
+        .initial_value(init_choice)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
-    let (strategy, plan) = &viable[choice];
+
+    if choice == refresh_idx
+        && let Some(m) = &discovered
+    {
+        *model = system_model::from_kdl(&m.contents)
+            .map_err(|e| StepError::Failed(format!("failed to parse system model from {}: {e}", m.device)))?;
+        model.imported = true;
+    }
+
+    let (strategy, plan) = if choice == refresh_idx {
+        // Partition with the strategy recorded in the discovered model,
+        // falling back to the first viable strategy for this disk
+        viable
+            .iter()
+            .find(|(strat, _)| strat.id == model.storage.strategy_id)
+            .unwrap_or(&viable[0])
+    } else {
+        &viable[choice]
+    };
 
     cliclack::note(
         format!("Planned changes for {}", selected_disk.device),
@@ -93,36 +148,11 @@ pub async fn run(info: &OsInfo, installer: &Installer) -> Result<(), StepError> 
     )
     .map_err(|_| StepError::UserAborted)?;
 
-    let confirmed = cliclack::confirm(format!(
-        "Erase {} and apply `{}`? ALL DATA ON THIS DISK WILL BE DESTROYED.",
-        selected_disk.device, strategy.name,
-    ))
-    .initial_value(false)
-    .interact()
-    .map_err(|_| StepError::UserAborted)?;
-
-    if !confirmed {
-        return Err(StepError::UserAborted);
-    }
-
-    let applied = provisioner
-        .apply_strategy(ApplyStrategyRequest {
-            strategy: strategy.id.clone(),
-            disks: vec![selected_disk.device.clone()],
-        })
-        .await?
-        .into_inner();
-
-    if let Some(plan) = applied.plan {
-        let mounts = plan
-            .role_mounts
-            .iter()
-            .map(|role_mount| format!("  {} on {}", role_mount.device, role_mount.mountpoint))
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        let _ = cliclack::log::success(format!("Disk partitioned and formatted:\n{mounts}"));
-    }
+    model.storage.disk = selected_disk.device.clone();
+    model.storage.disk_display = render_disk(selected_disk);
+    model.storage.strategy_id = strategy.id.clone();
+    model.storage.strategy_name = strategy.name.clone();
+    model.storage.plan = Some(plan.clone());
 
     Ok(())
 }
@@ -136,7 +166,7 @@ fn render_disk(disk: &Disk) -> String {
     )
 }
 
-fn render_plan(plan: &StrategyPlan) -> String {
+pub fn render_plan(plan: &StrategyPlan) -> String {
     let mut out = String::new();
 
     plan.disk_plans

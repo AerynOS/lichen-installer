@@ -43,7 +43,7 @@ where
 {
     fn from(device: T) -> Self {
         match &*device {
-            BlockDevice::Disk(ref disk) => proto_disks::Disk {
+            BlockDevice::Disk(disk) => proto_disks::Disk {
                 name: device.name().to_owned(),
                 sectors: device.sectors(),
                 device: device.device().to_string_lossy().to_string(),
@@ -60,7 +60,7 @@ where
                 display_size: disks::format_size(device.size()),
                 image_path: None,
             },
-            BlockDevice::Loopback(ref loopback) => proto_disks::Disk {
+            BlockDevice::Loopback(loopback) => proto_disks::Disk {
                 name: device.name().to_owned(),
                 sectors: device.sectors(),
                 device: device.device().to_string_lossy().to_string(),
