@@ -1,0 +1,45 @@
+// SPDX-FileCopyrightText: Copyright © AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package lichen.install;
+
+import "google/protobuf/empty.proto";
+
+// Install service: privileged operations for materializing the target system
+service Install {
+  // Write the system model document into the freshly provisioned target rootfs
+  rpc WriteSystemModel(WriteSystemModelRequest) returns (WriteSystemModelResponse) {}
+
+  // Search attached disks for system models left by previous installations
+  rpc DiscoverSystemModels(google.protobuf.Empty) returns (DiscoverSystemModelsResponse) {}
+}
+
+// Request message for WriteSystemModel
+message WriteSystemModelRequest {
+  // Partion device holding the target root filesystem
+  string root_device = 1;
+
+  // Full text of the system-model.kdl document
+  string contents = 2;
+}
+
+// Response message for WriteSystemModel
+message WriteSystemModelResponse {
+}
+
+// A system model found on an existing filesystem
+message DiscoveredModel {
+  // Partition device the model was found on
+  string device = 1;
+
+  // Full text of the discovered system-model.kdl
+  string contents = 2;
+}
+
+// Response message for DiscoverySystemModels
+message DiscoverSystemModelsResponse {
+  repeated DiscoveredModel models = 1;
+}

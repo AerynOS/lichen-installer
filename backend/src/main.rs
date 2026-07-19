@@ -12,13 +12,13 @@ use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 use std::{env, fs::File};
 
-use backend::auth::{uds_interceptor, AuthService};
-use backend::{disk_service, locales_service, provisioner_service, system_service};
+use backend::auth::{AuthService, uds_interceptor};
+use backend::{disk_service, install_service, locales_service, provisioner_service, system_service};
 use color_eyre::eyre::bail;
 use nix::libc::geteuid;
 use tokio::net::UnixListener;
-use tokio::signal::unix::{signal, SignalKind};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
+use tokio::signal::unix::{SignalKind, signal};
+use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::service::interceptor;
 use tonic::transport::Server;
@@ -27,7 +27,7 @@ use color_eyre::Result;
 pub use protocols::lichen::storage::disks;
 use tracing::info;
 use tracing_error::ErrorLayer;
-use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Configures color-eyre for enhanced error handling and reporting
 ///
@@ -140,6 +140,7 @@ async fn main() -> Result<()> {
         .add_service(locales_service::service(auth.clone()).await?)
         .add_service(system_service::service(auth.clone(), send))
         .add_service(provisioner_service::service(auth.clone()).await?)
+        .add_service(install_service::service(auth.clone()))
         .serve_with_incoming_shutdown(uds_stream, signal_handler(recv))
         .await?;
 

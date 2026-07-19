@@ -15,6 +15,9 @@ use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 
 pub mod lichen {
+    pub mod install {
+        tonic::include_proto!("lichen.install");
+    }
     pub mod locales {
         tonic::include_proto!("lichen.locales");
     }

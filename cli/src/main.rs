@@ -1,15 +1,16 @@
-// SPDX-FileCopyrightText: Copyright © 2025 Serpent OS Developers
-// SPDX-FileCopyrightText: Copyright © 2025 AerynOS Developers
+// SPDX-FileCopyrightText: Copyright © 2026 AerynOS Developers
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use cli::system_model;
 use cli::{frontend::Frontend, logging::CliclackLayer};
 use color_eyre::Result;
-use installer::Installer;
-use std::env;
+use color_eyre::eyre::eyre;
+use installer::{Installer, Model};
 use std::fs::File;
+use std::{env, fs};
 use tracing_error::ErrorLayer;
-use tracing_subscriber::{fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt};
 
 // Setup eyre for better error handling
 fn setup_eyre() {
@@ -52,6 +53,27 @@ fn configure_tracing() -> Result<()> {
     Ok(())
 }
 
+// Value of the --model flag when given
+fn model_arg() -> Result<Option<Model>> {
+    let mut args = env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--model" {
+            return match args.next() {
+                Some(path) => {
+                    let contents = fs::read_to_string(&path)?;
+                    let mut model =
+                        system_model::from_kdl(&contents).map_err(|e| eyre!("failed to parse {path}: {e}"))?;
+                    model.imported = true;
+                    Ok(Some(model))
+                }
+                None => Err(eyre!("--model requires a path to a system-model.kdl file")),
+            };
+        }
+    }
+
+    Ok(None)
+}
+
 // Main entry point
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -61,19 +83,28 @@ async fn main() -> Result<()> {
     let mut installer = Installer::builder()
         .add_step("storage")
         .add_step("locale")
+        .add_step("timezone")
+        .add_step("desktop")
+        .add_step("accounts")
         .add_step("summary")
         .active_step("storage")
         .build()
         .await?;
 
-    // Make the first step available
+    // Make every choice step available; summary is unlocked by the
+    // frontend once the other steps have ran
     installer.make_step_available("storage")?;
     installer.make_step_available("locale")?;
+    installer.make_step_available("timezone")?;
+    installer.make_step_available("desktop")?;
+    installer.make_step_available("accounts")?;
 
     let mut system = installer.system().await?;
     let info = system.get_os_info(()).await?;
 
     let iface = Frontend::new(installer, info.into_inner())?;
-    iface.run().await?;
+    let model = model_arg()?.unwrap_or_default();
+
+    iface.run(model).await?;
     Ok(())
 }
