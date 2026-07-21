@@ -19,6 +19,32 @@ use kdl::{KdlDocument, KdlEntry, KdlError, KdlNode};
 
 pub const LIVE_MODEL_PATH: &str = "/usr/lib/system-model.kdl";
 
+/// A repository definition extracted from a system model document
+pub struct Repository {
+    pub id: String,
+    pub uri: String,
+}
+
+/// Extract directly-addressable repos carrying a `uri` node
+/// from a system model document
+pub fn repositories(content: &str) -> Result<Vec<Repository>, KdlError> {
+    let doc: KdlDocument = content.parse()?;
+    let mut repos = Vec::new();
+
+    if let Some(node) = doc.get("repositories") {
+        for repo in node.iter_children() {
+            if let Some(uri) = repo.children().and_then(|child| child.get("uri")).and_then(first_arg) {
+                repos.push(Repository {
+                    id: repo.name().value().to_string(),
+                    uri: uri.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(repos)
+}
+
 /// Serialize the collected installation model to KDL text
 pub fn to_kdl(model: &Model) -> String {
     let mut doc = KdlDocument::new();
@@ -275,5 +301,30 @@ mod tests {
         let parsed = from_kdl(&text).expect("emtpy model must round trip");
         assert!(parsed.software.packages.is_empty());
         assert!(parsed.accounts.user.is_none());
+    }
+
+    #[test]
+    fn repositories_extracts_direct_urls() {
+        let text = r#"
+            repositories {
+                volatile {
+                    uri "https://build.aerynos.dev/stream/volatile/x86_64/stone.index"
+                    priority 0
+                }
+                rooted {
+                    base-uri "https://build.aerynos.dev/"
+                    version "stream/volatile"
+                }
+            }
+        "#;
+
+        let repos = repositories(text).expect("must parse");
+
+        assert_eq!(repos.len(), 1);
+        assert_eq!(repos[0].id, "volatile");
+        assert_eq!(
+            repos[0].uri,
+            "https://build.aerynos.dev/stream/volatile/x86_64/stone.index"
+        );
     }
 }

@@ -15,6 +15,11 @@ service Install {
 
   // Search attached disks for system models left by previous installations
   rpc DiscoverSystemModels(google.protobuf.Empty) returns (DiscoverSystemModelsResponse) {}
+
+  // Install the OS onto the provisioned target and configure it.
+  // Requires the target mounts from an applied strategy; runs moss against
+  // the target root using the system model written by WriteSystemModel
+  rpc InstallSystem(InstallSystemRequest) returns (stream InstallProgress) {}
 }
 
 // Request message for WriteSystemModel
@@ -42,4 +47,53 @@ message DiscoveredModel {
 // Response message for DiscoverySystemModels
 message DiscoverSystemModelsResponse {
   repeated DiscoveredModel models = 1;
+}
+
+// A filesystem mount for the target installation
+message TargetMount {
+  // Partition device in /dev
+  string device = 1;
+
+  // Mountpoint relative to the target root
+  string mountpoint = 2;
+}
+
+// A user account to create on the target
+message UserSpec {
+  string username = 1;
+  string real_name = 2;
+
+  // crypt(3) password hash
+  string password_hash = 3;
+}
+
+// Request message for InstallSystem
+message InstallSystemRequest {
+  repeated TargetMount mounts = 1;
+  string locale = 2;
+  string timezone = 3;
+
+  // crypt(3) hash for the root account
+  string root_password_hash = 4;
+
+  UserSpec user = 5;
+  repeated RepoSpec repositories = 6;
+}
+
+// Progress update emitted during installation
+message InstallProgress {
+  // Progress line, may be empty for keep-alive ticks
+  string message = 1;
+
+  // True on the final update of a successful installation
+  bool finished = 2;
+}
+
+// A package repository to prime into the target before syncing
+message RepoSpec {
+  // Repository identifier; example: "volatile"
+  string id = 1;
+
+  // Direct stone index URI
+  string uri = 2;
 }
