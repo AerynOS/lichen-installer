@@ -82,7 +82,7 @@ pub fn resolve(name: &str) -> Result<Vec<String>, StepError> {
             .ok_or_else(|| StepError::Failed(format!("unknown selection: {current}")))?;
 
         packages.extend(selection.required.iter().cloned());
-        packages.extend(selection.depends.iter().cloned());
+        pending.extend(selection.depends.iter().cloned());
     }
 
     Ok(packages.into_iter().collect())

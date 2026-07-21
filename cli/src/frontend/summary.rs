@@ -5,7 +5,10 @@
 use super::storage;
 use crate::{CliStep, FrontendStep, system_model};
 use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
-use protocols::lichen::{install::WriteSystemModelRequest, storage::provisioner::ApplyStrategyRequest};
+use protocols::lichen::{
+    install::{InstallSystemRequest, RepoSpec, TargetMount, UserSpec, WriteSystemModelRequest},
+    storage::provisioner::ApplyStrategyRequest,
+};
 
 pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepError> {
     let plan = model
@@ -73,19 +76,79 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
         .map(|role_mount| role_mount.device.clone())
         .ok_or_else(|| StepError::Failed("applied plan has no root mount".to_string()))?;
     let contents = system_model::to_kdl(model);
+    let repositories = system_model::repositories(&contents)
+        .map_err(|e| StepError::Failed(format!("generated model failed to parse: {e}")))?
+        .into_iter()
+        .map(|repo| RepoSpec {
+            id: repo.id,
+            uri: repo.uri,
+        })
+        .collect();
     let mut install = installer.install().await?;
     install
         .write_system_model(WriteSystemModelRequest { root_device, contents })
         .await?;
+
     let mounts = applied_plan
         .role_mounts
         .iter()
-        .map(|role_mount| format!("  {} on {}", role_mount.device, role_mount.mountpoint))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let _ = cliclack::log::success(format!(
-        "Disk partitioned and formatted:\n{mounts}\n\nSystem model written to /usr/lib/system-model.kdl on the target root"
-    ));
+        .filter(|role_mount| role_mount.mountpoint.starts_with('/'))
+        .map(|role_mount| TargetMount {
+            device: role_mount.device.clone(),
+            mountpoint: role_mount.mountpoint.clone(),
+        })
+        .collect();
+
+    let spinner = cliclack::spinner();
+    spinner.start("Installing AerynOS to the target disk (this can take several minutes)");
+
+    let spinner = cliclack::spinner();
+    spinner.start("Installing AerynOS to the target disk");
+
+    let mut stream = match install
+        .install_system(InstallSystemRequest {
+            mounts,
+            locale: model.region.language.clone(),
+            timezone: model.region.timezone.clone(),
+            root_password_hash: model.accounts.root_password_hash.clone().unwrap_or_default(),
+            user: model.accounts.user.as_ref().map(|user| UserSpec {
+                username: user.username.clone(),
+                real_name: user.real_name.clone(),
+                password_hash: user.password_hash.clone(),
+            }),
+            repositories,
+        })
+        .await
+    {
+        Ok(response) => response.into_inner(),
+        Err(e) => {
+            spinner.error("Installation failed");
+            return Err(e.into());
+        }
+    };
+
+    loop {
+        match stream.message().await {
+            Ok(Some(update)) => {
+                if update.finished {
+                    spinner.stop("AerynOS installed");
+                    break;
+                }
+
+                if !update.message.is_empty() {
+                    spinner.set_message(update.message);
+                }
+            }
+            Ok(None) => {
+                spinner.error("Installation failed");
+                return Err(StepError::Failed("install stream ended without completing".to_string()));
+            }
+            Err(e) => {
+                spinner.error("Installation failed");
+                return Err(e.into());
+            }
+        }
+    }
 
     Ok(())
 }
