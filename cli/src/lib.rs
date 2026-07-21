@@ -9,9 +9,9 @@ use installer::{DisplayInfo, Installer, Model, Step};
 use protocols::lichen::osinfo::OsInfo;
 
 pub mod frontend;
+pub mod install_model;
 pub mod logging;
 pub mod selections;
-pub mod system_model;
 
 pub enum FrontendStep {
     Storage,

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use super::storage;
-use crate::{CliStep, FrontendStep, system_model};
+use crate::{CliStep, FrontendStep, install_model};
 use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
 use protocols::lichen::{
     install::{InstallSystemRequest, RepoSpec, TargetMount, UserSpec, WriteSystemModelRequest},
@@ -75,8 +75,9 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
         .find(|role_mount| role_mount.mountpoint == "/")
         .map(|role_mount| role_mount.device.clone())
         .ok_or_else(|| StepError::Failed("applied plan has no root mount".to_string()))?;
-    let contents = system_model::to_kdl(model);
-    let repositories = system_model::repositories(&contents)
+    let system_model = install_model::system_model_kdl(model);
+    let install_record = install_model::to_kdl(model);
+    let repositories = install_model::repositories(&system_model)
         .map_err(|e| StepError::Failed(format!("generated model failed to parse: {e}")))?
         .into_iter()
         .map(|repo| RepoSpec {
@@ -86,7 +87,11 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
         .collect();
     let mut install = installer.install().await?;
     install
-        .write_system_model(WriteSystemModelRequest { root_device, contents })
+        .write_system_model(WriteSystemModelRequest {
+            root_device,
+            contents: system_model,
+            install_model: install_record,
+        })
         .await?;
 
     let mounts = applied_plan

@@ -8,7 +8,7 @@
 //! the binary. Each names its required packages/providers and the other
 //! selections it depends on.
 
-use crate::system_model::prop;
+use crate::install_model::prop;
 use installer::StepError;
 use kdl::KdlDocument;
 use std::collections::{BTreeSet, HashMap, HashSet};
