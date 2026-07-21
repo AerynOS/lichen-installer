@@ -30,6 +30,8 @@
     "dbus",
     "dbus-broker",
     "iproute2",
+    "linux-pam",
+    "ntpd-rs",
     "shadow",
     "sysbinary(fsck.ext4)",
     "sysbinary(fsck.f2fs)",

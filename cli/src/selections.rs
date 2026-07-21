@@ -27,9 +27,11 @@ pub struct Selection {
 /// Raw embedded selection documents
 const RAW: &[&str] = &[
     include_str!("../../data/selections/base.json"),
+    include_str!("../../data/selections/desktop-common.json"),
     include_str!("../../data/selections/cosmic.json"),
     include_str!("../../data/selections/develop.json"),
     include_str!("../../data/selections/gnome.json"),
+    include_str!("../../data/selections/plasma.json"),
     include_str!("../../data/selections/kernel-common.json"),
     include_str!("../../data/selections/kernel-desktop.json"),
 ];
@@ -40,7 +42,7 @@ const IMPLICIT: &[&str] = &["kernel-common", "kernel-desktop"];
 
 /// Selections that are structural rather than
 /// user-facing.
-const HIDDEN: &[&str] = &["base", "develop", "kernel-common", "kernel-desktop"];
+const HIDDEN: &[&str] = &["base", "desktop-common", "develop", "kernel-common", "kernel-desktop"];
 
 /// Parse all embedded selections
 pub fn all() -> Vec<Selection> {

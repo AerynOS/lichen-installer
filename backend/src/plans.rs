@@ -10,11 +10,11 @@
 
 use disks::BlockDevice;
 use partitioning::{
-    gpt::partition_types::OperatingSystem, planner::Change, writer::DiskWriter, Formatter, GptAttributes,
-    PartitionAttributes,
+    Formatter, GptAttributes, PartitionAttributes, gpt::partition_types::OperatingSystem, planner::Change,
+    writer::DiskWriter,
 };
 use protocols::lichen::storage::{
-    provisioner::{planned_change, DiskPlan, PlannedChange, PlannedFilesystem, RoleMount, StrategyPlan},
+    provisioner::{DiskPlan, PlannedChange, PlannedFilesystem, RoleMount, StrategyPlan, planned_change},
     types::{self, operating_system::Kind},
 };
 use provisioning::{Filesystem, PartitionRole, Plan, Provisioner, StrategyDefinition};

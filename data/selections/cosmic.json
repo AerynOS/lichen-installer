@@ -3,9 +3,10 @@
   "summary": "COSMIC Desktop",
   "description": "Warning: Provided as an alpha preview",
   "depends": [
-    "base"
+    "desktop-common"
   ],
   "required": [
+    "cosmic-applibrary",
     "cosmic-applets",
     "cosmic-bg",
     "cosmic-comp",
@@ -14,6 +15,8 @@
     "cosmic-files",
     "cosmic-greeter",
     "cosmic-icons",
+    "cosmic-idle",
+    "cosmic-initial-setup",
     "cosmic-launcher",
     "cosmic-notifications",
     "cosmic-osd",
