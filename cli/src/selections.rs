@@ -4,36 +4,35 @@
 
 //! Embedded package selections for the target installation
 //!
-//! Selections are the JSON definitions in `data/selections/`, compiled into
+//! Selections are the KDL definitions in `data/selections/`, compiled into
 //! the binary. Each names its required packages/providers and the other
 //! selections it depends on.
 
+use crate::system_model::prop;
 use installer::StepError;
-use serde::Deserialize;
+use kdl::KdlDocument;
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// A selection definition loaded from data/selections
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct Selection {
     pub name: String,
     pub summary: String,
     pub description: String,
-    #[serde(default)]
     pub depends: Vec<String>,
-    #[serde(default)]
-    pub required: Vec<String>,
+    pub packages: Vec<String>,
 }
 
 /// Raw embedded selection documents
 const RAW: &[&str] = &[
-    include_str!("../../data/selections/base.json"),
-    include_str!("../../data/selections/desktop-common.json"),
-    include_str!("../../data/selections/cosmic.json"),
-    include_str!("../../data/selections/develop.json"),
-    include_str!("../../data/selections/gnome.json"),
-    include_str!("../../data/selections/plasma.json"),
-    include_str!("../../data/selections/kernel-common.json"),
-    include_str!("../../data/selections/kernel-desktop.json"),
+    include_str!("../../data/selections/base.kdl"),
+    include_str!("../../data/selections/desktop-common.kdl"),
+    include_str!("../../data/selections/cosmic.kdl"),
+    include_str!("../../data/selections/develop.kdl"),
+    include_str!("../../data/selections/gnome.kdl"),
+    include_str!("../../data/selections/plasma.kdl"),
+    include_str!("../../data/selections/kernel-common.kdl"),
+    include_str!("../../data/selections/kernel-desktop.kdl"),
 ];
 
 /// Selections that are always part of an installation and never offered
@@ -46,9 +45,7 @@ const HIDDEN: &[&str] = &["base", "desktop-common", "develop", "kernel-common", 
 
 /// Parse all embedded selections
 pub fn all() -> Vec<Selection> {
-    RAW.iter()
-        .map(|raw| serde_json::from_str(raw).expect("embedded selection JSON must be valid"))
-        .collect()
+    RAW.iter().map(|raw| parse(raw)).collect()
 }
 
 /// The user-facing desktop choices
@@ -83,9 +80,63 @@ pub fn resolve(name: &str) -> Result<Vec<String>, StepError> {
             .get(current.as_str())
             .ok_or_else(|| StepError::Failed(format!("unknown selection: {current}")))?;
 
-        packages.extend(selection.required.iter().cloned());
+        packages.extend(selection.packages.iter().cloned());
         pending.extend(selection.depends.iter().cloned());
     }
 
     Ok(packages.into_iter().collect())
+}
+
+/// Parse one embedded selection document
+fn parse(raw: &str) -> Selection {
+    let doc: KdlDocument = raw.parse().expect("embedded selection KDL must be valid");
+    let node = doc
+        .get("selection")
+        .expect("embedded selection must have a selection node");
+    let list = |key: &str| -> Vec<String> {
+        node.children()
+            .and_then(|children| children.get(key))
+            .map(|list| {
+                list.iter_children()
+                    .map(|child| child.name().value().to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+
+    Selection {
+        name: prop(node, "name").expect("selection name is required").to_string(),
+        summary: prop(node, "summary").unwrap_or_default().to_string(),
+        description: prop(node, "description").unwrap_or_default().to_string(),
+        depends: list("depends"),
+        packages: list("packages"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_selections_parse() {
+        let selections = all();
+        assert_eq!(selections.len(), 8);
+        assert!(desktops().iter().any(|sel| sel.name == "cosmic"));
+        assert!(desktops().iter().all(|sel| !HIDDEN.contains(&sel.name.as_str())));
+    }
+
+    #[test]
+    fn resolve_includes_dependency_closure() {
+        let packages = resolve("cosmic").expect("cosmic must resolve");
+
+        assert!(packages.contains(&"cosmic-comp".to_string()));
+        assert!(packages.contains(&"mesa-dri-drivers".to_string()));
+        assert!(packages.contains(&"binary(bash)".to_string()));
+        assert!(packages.contains(&"linux-desktop".to_string()));
+    }
+
+    #[test]
+    fn unknown_selection_fails() {
+        assert!(resolve("no-such-selection").is_err())
+    }
 }

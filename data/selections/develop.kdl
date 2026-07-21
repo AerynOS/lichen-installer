@@ -1,0 +1,10 @@
+selection name="develop" summary="Development tooling" description="Install software for packaging and development." {
+    depends {
+        base
+    }
+    packages {
+        "binary(boulder)"
+        "binary(git)"
+        "binary(zed)"
+    }
+}
