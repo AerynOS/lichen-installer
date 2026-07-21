@@ -39,6 +39,9 @@ const PROBE_MOUNT: &str = "/run/lichen/probe";
 /// Location of the system model inside the target root; moss reads and
 /// rewrites this exact path on the installed system
 const MODEL_PATH: &str = "usr/lib/system-model.kdl";
+/// The installer's permanent record on the target: the install-model superset
+/// wrapping the sytem-model
+const INSTALL_MODEL_PATH: &str = "etc/moss/install-model.kdl";
 
 /// Service represents the install service implementation
 #[derive(Debug)]
@@ -70,7 +73,7 @@ impl Install for Service {
             return Err(Status::not_found(format!("no such device: {}", req.root_device)));
         }
 
-        tokio::task::block_in_place(|| write_to_target(&req.root_device, &req.contents))?;
+        tokio::task::block_in_place(|| write_to_target(&req.root_device, &req.contents, &req.install_model))?;
 
         Ok(Response::new(WriteSystemModelResponse {}))
     }
@@ -152,7 +155,7 @@ impl Install for Service {
 
 /// Mount the target root, write the model, and always unmount again,
 /// even when the write fails
-fn write_to_target(root_device: &str, contents: &str) -> Result<(), Status> {
+fn write_to_target(root_device: &str, contents: &str, install_model: &str) -> Result<(), Status> {
     let target = Path::new(TARGET_MOUNT);
 
     fs::create_dir_all(target)?;
@@ -161,10 +164,19 @@ fn write_to_target(root_device: &str, contents: &str) -> Result<(), Status> {
 
     let result = (|| -> Result<(), Status> {
         let model_path = target.join(MODEL_PATH);
+        let install_model_path = target.join(INSTALL_MODEL_PATH);
+
         if let Some(parent) = model_path.parent() {
             fs::create_dir_all(parent)?;
         }
+
+        if let Some(parent) = install_model_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
         fs::write(&model_path, contents)?;
+        fs::write(&install_model_path, install_model)?;
+
         Ok(())
     })();
 
@@ -197,7 +209,9 @@ fn discover_models() -> Result<Vec<DiscoveredModel>, Status> {
                 continue;
             }
 
-            let contents = fs::read_to_string(probe.join(MODEL_PATH)).ok();
+            let contents = fs::read_to_string(probe.join(INSTALL_MODEL_PATH))
+                .or_else(|_| fs::read_to_string(probe.join(MODEL_PATH)))
+                .ok();
             let _ = run(Command::new("umount").arg(probe));
 
             if let Some(contents) = contents {

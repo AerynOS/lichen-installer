@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use cli::system_model;
+use cli::install_model;
 use cli::{frontend::Frontend, logging::CliclackLayer};
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
@@ -62,7 +62,7 @@ fn model_arg() -> Result<Option<Model>> {
                 Some(path) => {
                     let contents = fs::read_to_string(&path)?;
                     let mut model =
-                        system_model::from_kdl(&contents).map_err(|e| eyre!("failed to parse {path}: {e}"))?;
+                        install_model::from_kdl(&contents).map_err(|e| eyre!("failed to parse {path}: {e}"))?;
                     model.imported = true;
                     Ok(Some(model))
                 }

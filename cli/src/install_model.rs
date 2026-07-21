@@ -2,18 +2,23 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-//! Reading and writing the AerynOS `system-model.kdl`
+//! Reading and writing AerynOS installation models
 //!
-//! The emitted document carries the moss-owned `repositories` and `packages`
-//! nodes plus a lichen-owned `installer` node holding the choices moss cannot
-//! express, partitoning strategy, locale, timezone, accounts. moss ignores
-//! unknown top-level nodes and preserves them verbatim across transactions,
-//! so both live in the same file.
+//! Two documents, per the upstream design:
+//! - `system-model.kdl` - moss's agnostic system definition
+//! - `install-model.kdl` - the installer's strict superset: installer
+//!   sections (strategy, disk, locale, timezone, desktop, accounts as crypt
+//!   hashes, install date) wrapping a nested `system-model` node. Written to
+//!   /etc/moss/install-model.kdl as the permanent installation record;
+//!   re-importing it reproduces the installation.
 //!
-//! Passwords appear only as crypt(3) hashes.
+//! The installer is thereby a function from system-model to install-model: a
+//! bare system-model can be ingested (packages) and decorated interactively
+//! into a full install-model.
 
 use std::fs;
 
+use chrono::Utc;
 use installer::{Model, User};
 use kdl::{KdlDocument, KdlEntry, KdlError, KdlNode};
 
@@ -47,11 +52,54 @@ pub fn repositories(content: &str) -> Result<Vec<Repository>, KdlError> {
 
 /// Serialize the collected installation model to KDL text
 pub fn to_kdl(model: &Model) -> String {
-    let mut doc = KdlDocument::new();
+    let mut children = KdlDocument::new();
 
-    doc.nodes_mut().push(repositories_node());
-    doc.nodes_mut().push(packages_node(&model.software.packages));
-    doc.nodes_mut().push(installer_node(model));
+    let mut push_arg = |name: &str, value: &str| {
+        if !value.is_empty() {
+            let mut child = KdlNode::new(name);
+            child.push(KdlEntry::new(value));
+            children.nodes_mut().push(child);
+        }
+    };
+
+    push_arg("strategy", &model.storage.strategy_id);
+    push_arg("disk", &model.storage.disk);
+    push_arg("locale", &model.region.language);
+    push_arg("timezone", &model.region.timezone);
+    push_arg("desktop", &model.software.selection);
+    push_arg("installed", &Utc::now().to_rfc3339());
+
+    let mut accounts = KdlNode::new("accounts");
+    let mut account_children = KdlDocument::new();
+
+    if let Some(hash) = &model.accounts.root_password_hash {
+        let mut root = KdlNode::new("root");
+        root.push(KdlEntry::new_prop("hash", hash.as_str()));
+        account_children.nodes_mut().push(root);
+    }
+
+    if let Some(user) = &model.accounts.user {
+        let mut user_node = KdlNode::new("user");
+        user_node.push(KdlEntry::new_prop("name", user.username.as_str()));
+        user_node.push(KdlEntry::new_prop("realname", user.real_name.as_str()));
+        user_node.push(KdlEntry::new_prop("hash", user.password_hash.as_str()));
+        account_children.nodes_mut().push(user_node);
+    }
+
+    if !account_children.nodes().is_empty() {
+        accounts.set_children(account_children);
+        children.nodes_mut().push(accounts);
+    }
+
+    let mut system = KdlNode::new("system-model");
+    system.set_children(system_model_document(model));
+    children.nodes_mut().push(system);
+
+    let mut root = KdlNode::new("install-model");
+    root.set_children(children);
+
+    let mut doc = KdlDocument::new();
+    doc.nodes_mut().push(root);
     doc.autoformat();
     doc.to_string()
 }
@@ -62,66 +110,83 @@ pub fn from_kdl(content: &str) -> Result<Model, KdlError> {
     let doc: KdlDocument = content.parse()?;
     let mut model = Model::default();
 
+    if let Some(install) = doc.get("install-model") {
+        for child in install.iter_children() {
+            apply_installer_field(&mut model, child);
+        }
+
+        if let Some(system) = install.children().and_then(|children| children.get("system-model"))
+            && let Some(inner) = system.children()
+        {
+            apply_packages(&mut model, inner);
+        } else {
+            apply_packages(&mut model, &doc);
+        }
+    }
+
+    Ok(model)
+}
+
+/// Apply one installer-section field to the model
+fn apply_installer_field(model: &mut Model, child: &KdlNode) {
+    match child.name().value() {
+        "strategy" => {
+            if let Some(value) = first_arg(child) {
+                model.storage.strategy_id = value.to_string();
+                model.storage.strategy_name = value.to_string();
+            }
+        }
+        "disk" => {
+            if let Some(value) = first_arg(child) {
+                model.storage.disk = value.to_string();
+            }
+        }
+        "locale" => {
+            if let Some(value) = first_arg(child) {
+                model.region.language = value.to_string();
+            }
+        }
+        "timezone" => {
+            if let Some(value) = first_arg(child) {
+                model.region.timezone = value.to_string();
+            }
+        }
+        "desktop" => {
+            if let Some(value) = first_arg(child) {
+                model.software.selection = value.to_string();
+            }
+        }
+        "accounts" => {
+            for account in child.iter_children() {
+                match account.name().value() {
+                    "root" => {
+                        model.accounts.root_password_hash = prop(account, "hash").map(str::to_string);
+                    }
+                    "user" => {
+                        if let (Some(name), Some(hash)) = (prop(account, "name"), prop(account, "hash")) {
+                            model.accounts.user = Some(User {
+                                username: name.to_string(),
+                                real_name: prop(account, "realname").unwrap_or_default().to_string(),
+                                password_hash: hash.to_string(),
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Ingest the packages node from a system-model document
+fn apply_packages(model: &mut Model, doc: &KdlDocument) {
     if let Some(packages) = doc.get("packages") {
         model.software.packages = packages
             .iter_children()
             .map(|node| node.name().value().to_string())
             .collect();
     }
-
-    if let Some(installer) = doc.get("installer") {
-        for child in installer.iter_children() {
-            match child.name().value() {
-                "strategy" => {
-                    if let Some(value) = first_arg(child) {
-                        model.storage.strategy_id = value.to_string();
-                        model.storage.strategy_name = value.to_string();
-                    }
-                }
-                "disk" => {
-                    if let Some(value) = first_arg(child) {
-                        model.storage.disk = value.to_string();
-                    }
-                }
-                "locale" => {
-                    if let Some(value) = first_arg(child) {
-                        model.region.language = value.to_string();
-                    }
-                }
-                "timezone" => {
-                    if let Some(value) = first_arg(child) {
-                        model.region.timezone = value.to_string();
-                    }
-                }
-                "desktop" => {
-                    if let Some(value) = first_arg(child) {
-                        model.software.selection = value.to_string();
-                    }
-                }
-                "accounts" => {
-                    for account in child.iter_children() {
-                        match account.name().value() {
-                            "root" => {
-                                model.accounts.root_password_hash = prop(account, "hash").map(str::to_string);
-                            }
-                            "user" => {
-                                if let (Some(name), Some(hash)) = (prop(account, "name"), prop(account, "hash")) {
-                                    model.accounts.user = Some(User {
-                                        username: name.to_string(),
-                                        real_name: prop(account, "realname").unwrap_or_default().to_string(),
-                                        password_hash: hash.to_string(),
-                                    });
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-    Ok(model)
 }
 
 /// The moss-owned repo node: cloned from the live system model when
@@ -176,47 +241,19 @@ fn packages_node(packages: &[String]) -> KdlNode {
     node
 }
 
-/// The lichen-owned installer node: everything moss cannot express
-fn installer_node(model: &Model) -> KdlNode {
-    let mut node = KdlNode::new("installer");
-    let mut children = KdlDocument::new();
-    let mut push_arg = |name: &str, value: &str| {
-        if !value.is_empty() {
-            let mut child = KdlNode::new(name);
-            child.push(KdlEntry::new(value));
-            children.nodes_mut().push(child);
-        }
-    };
+/// Serialize the bare, moss-pure system-model
+pub fn system_model_kdl(model: &Model) -> String {
+    let mut doc = system_model_document(model);
+    doc.autoformat();
+    doc.to_string()
+}
 
-    push_arg("strategy", &model.storage.strategy_id);
-    push_arg("disk", &model.storage.disk);
-    push_arg("locale", &model.region.language);
-    push_arg("timezone", &model.region.timezone);
-    push_arg("desktop", &model.software.selection);
-
-    let mut accounts = KdlNode::new("accounts");
-    let mut account_children = KdlDocument::new();
-
-    if let Some(hash) = &model.accounts.root_password_hash {
-        let mut root = KdlNode::new("root");
-        root.push(KdlEntry::new_prop("hash", hash.as_str()));
-        account_children.nodes_mut().push(root);
-    }
-    if let Some(user) = &model.accounts.user {
-        let mut user_node = KdlNode::new("user");
-        user_node.push(KdlEntry::new_prop("name", user.username.as_str()));
-        user_node.push(KdlEntry::new_prop("realname", user.real_name.as_str()));
-        user_node.push(KdlEntry::new_prop("hash", user.password_hash.as_str()));
-        account_children.nodes_mut().push(user_node);
-    }
-
-    if !account_children.nodes().is_empty() {
-        accounts.set_children(account_children);
-        children.nodes_mut().push(accounts);
-    }
-
-    node.set_children(children);
-    node
+/// The moss-owned system-model.kdl
+fn system_model_document(model: &Model) -> KdlDocument {
+    let mut doc = KdlDocument::new();
+    doc.nodes_mut().push(repositories_node());
+    doc.nodes_mut().push(packages_node(&model.software.packages));
+    doc
 }
 
 /// First positional argument of a node, as a str
@@ -286,13 +323,19 @@ mod tests {
     }
 
     #[test]
-    fn moss_owned_nodes_are_present_and_valid() {
-        let text = to_kdl(&sample_model());
-        let doc: KdlDocument = text.parse().expect("emitted model must be valid KDL");
+    fn document_forms_are_correct() {
+        let full = to_kdl(&sample_model());
+        let full_doc: KdlDocument = full.parse().expect("install-model must be valid KDL");
 
-        assert!(doc.get("repositories").is_some());
-        assert!(doc.get("packages").is_some());
-        assert!(doc.get("installer").is_some());
+        assert!(full_doc.get("install-model").is_some());
+        assert!(full_doc.get("packages").is_none());
+
+        let bare = system_model_kdl(&sample_model());
+        let bare_doc: KdlDocument = bare.parse().expect("system-model must be valid KDL");
+
+        assert!(bare_doc.get("repositories").is_some());
+        assert!(bare_doc.get("packages").is_some());
+        assert!(bare_doc.get("install-model").is_none());
     }
 
     #[test]

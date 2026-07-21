@@ -8,7 +8,7 @@
 //! allowing users to choose which disk to install AerynOS on, preview the
 //! partitioning strategy, and apply it.
 
-use crate::{CliStep, FrontendStep, system_model};
+use crate::{CliStep, FrontendStep, install_model};
 use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
 use protocols::lichen::{
     osinfo::OsInfo,
@@ -126,7 +126,7 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
     if choice == refresh_idx
         && let Some(m) = &discovered
     {
-        *model = system_model::from_kdl(&m.contents)
+        *model = install_model::from_kdl(&m.contents)
             .map_err(|e| StepError::Failed(format!("failed to parse system model from {}: {e}", m.device)))?;
         model.imported = true;
     }

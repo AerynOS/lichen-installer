@@ -29,6 +29,9 @@ message WriteSystemModelRequest {
 
   // Full text of the system-model.kdl document
   string contents = 2;
+
+  // Full text of the install-model.kdl record (installer superset)
+  string install_model = 3;
 }
 
 // Response message for WriteSystemModel
