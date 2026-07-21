@@ -1,0 +1,7 @@
+selection name="kernel-common" summary="Common kernel runtime" description="Common kernel runtime" {
+    packages {
+        kmod
+        linux-firmware
+        lvm2
+    }
+}

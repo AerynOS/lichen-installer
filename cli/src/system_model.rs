@@ -228,7 +228,7 @@ fn first_arg(node: &KdlNode) -> Option<&str> {
 }
 
 /// Named property of a node, as a str
-fn prop<'a>(node: &'a KdlNode, key: &str) -> Option<&'a str> {
+pub(crate) fn prop<'a>(node: &'a KdlNode, key: &str) -> Option<&'a str> {
     node.get(key).and_then(|value| value.as_string())
 }
 
