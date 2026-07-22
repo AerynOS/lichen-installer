@@ -298,7 +298,7 @@ fn install_target(req: &InstallSystemRequest, progress: &(dyn Fn(String) + Sync)
     for mountpoint in mounted.iter().rev() {
         let _ = run(Command::new("umount").arg(mountpoint));
     }
-    let _ = run(Command::new("sync").arg(""));
+    let _ = run(&mut Command::new("sync"));
 
     result
 }
@@ -425,13 +425,17 @@ fn run_streaming(command: &mut Command, progress: &(dyn Fn(String) + Sync)) -> R
         scope.spawn(|| {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
                 record(&line);
-                progress(line);
+                warn!("stderr: {line}");
             }
         });
 
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             record(&line);
-            progress(line);
+
+            let cleaned = clean_line(&line);
+            if !cleaned.is_empty() {
+                progress(cleaned);
+            }
         }
     });
 
@@ -450,6 +454,30 @@ fn run_streaming(command: &mut Command, progress: &(dyn Fn(String) + Sync)) -> R
     }
 
     Ok(())
+}
+
+/// Reduce a raw output line to something fit for a one-line progress display
+fn clean_line(line: &str) -> String {
+    let last = line.rsplit('\r').next().unwrap_or(line);
+    let mut out = String::with_capacity(last.len());
+    let mut chars = last.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' {
+            if chars.next() == Some('[') {
+                for end in chars.by_ref() {
+                    if end.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        if !c.is_control() {
+            out.push(c);
+        }
+    }
+    out.trim().to_string()
 }
 
 /// Run a command to completion, mapping failure to a gRPC status carrying
