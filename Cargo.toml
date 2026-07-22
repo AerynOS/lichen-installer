@@ -50,8 +50,8 @@ semicolon_in_expressions_from_macros = "warn"
 unused_import_braces = "warn"
 unused_qualifications = "warn"
 
-[patch."https://github.com/AerynOS/disks-rs.git"]
-disks = { path = "../disks-rs/crates/disks" }
-partitioning = { path = "../disks-rs/crates/partitioning" }
-provisioning = { path = "../disks-rs/crates/provisioning" }
-types = { path = "../disks-rs/crates/types" }
+#[patch."https://github.com/AerynOS/disks-rs.git"]
+#disks = { path = "../disks-rs/crates/disks" }
+#partitioning = { path = "../disks-rs/crates/partitioning" }
+#provisioning = { path = "../disks-rs/crates/provisioning" }
+#types = { path = "../disks-rs/crates/types" }

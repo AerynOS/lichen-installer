@@ -29,8 +29,8 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
     ));
 
     match &model.accounts.user {
-        Some(user) => text.push_str(&format!("User:      {} ({})\n", user.username, user.real_name)),
-        None => text.push_str("User:      not configured\n"),
+        Some(user) => text.push_str(&format!("User: {} ({})\n", user.username, user.real_name)),
+        None => text.push_str("User: not configured\n"),
     }
 
     text.push_str(&format!(
@@ -106,9 +106,6 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
 
     let spinner = cliclack::spinner();
     spinner.start("Installing AerynOS to the target disk (this can take several minutes)");
-
-    let spinner = cliclack::spinner();
-    spinner.start("Installing AerynOS to the target disk");
 
     let mut stream = match install
         .install_system(InstallSystemRequest {

@@ -15,7 +15,6 @@ selection name="cosmic" summary="COSMIC Desktop" description="Warning: Provided 
 		cosmic-idle
 		cosmic-initial-setup
 		cosmic-launcher
-		cosmic-monitor
 		cosmic-notifications
 		cosmic-osd
 		cosmic-panel
@@ -36,7 +35,7 @@ selection name="cosmic" summary="COSMIC Desktop" description="Warning: Provided 
 		font-noto-emoji
 		liberation-fonts-ttf
 		os-artwork
-		"sysbinary(plymouth)"
+		"sysbinary(plymouthd)"
 		xdg-desktop-portal-cosmic
 		xdg-desktop-portal-gtk
 	}
