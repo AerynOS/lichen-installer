@@ -85,6 +85,7 @@ selection name="base" summary="Base system" description="The base system for all
         pkgset-aeryn-base
         qrencode
         readline
+        sed
         shadow
         sudo-rs
         system-accounts

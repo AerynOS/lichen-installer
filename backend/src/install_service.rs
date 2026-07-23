@@ -42,6 +42,19 @@ const MODEL_PATH: &str = "usr/lib/system-model.kdl";
 /// The installer's permanent record on the target: the install-model superset
 /// wrapping the sytem-model
 const INSTALL_MODEL_PATH: &str = "etc/moss/install-model.kdl";
+/// Repo config directory inside the target root
+const REPO_DIR: &str = "etc/moss/repo.d";
+/// The unstable repo kdl entry
+const UNSTABLE_REPO: &str = r#"unstable {
+    description "AerynOS unstable package stream"
+    base-uri "https://cdn.aerynos.dev/"
+    channel main
+    version "stream/unstable"
+    arch x86_64
+    priority 0
+    active #true
+}
+"#;
 
 /// Service represents the install service implementation
 #[derive(Debug)]
@@ -303,8 +316,27 @@ fn install_target(req: &InstallSystemRequest, progress: &(dyn Fn(String) + Sync)
     result
 }
 
+/// Make the unstable stream the only configured repo on the
+/// installed system, regardless of which stream the live media primed
+fn configure_repos(target: &Path) -> Result<(), Status> {
+    let repo_dir = target.join(REPO_DIR);
+    fs::create_dir_all(&repo_dir)?;
+
+    for entry in fs::read_dir(&repo_dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext == "yaml" || ext == "kdl") {
+            fs::remove_file(&path)?;
+        }
+    }
+
+    fs::write(repo_dir.join("unstable.kdl"), UNSTABLE_REPO)?;
+    Ok(())
+}
+
 /// Apply the installer-owned config to the installed target
 fn configure_target(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> {
+    configure_repos(target)?;
+
     if !req.locale.is_empty() {
         fs::write(target.join("etc/locale.conf"), format!("LANG={}\n", req.locale))?;
     }

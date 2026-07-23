@@ -14,10 +14,17 @@ use protocols::lichen::{
     osinfo::OsInfo,
     storage::{
         disks::{Disk, ListDisksRequest},
-        provisioner::{StrategyPlan, TryStrategyRequest},
+        provisioner::{StrategyDefinition, StrategyPlan, TryStrategyRequest},
     },
 };
 use std::env;
+
+/// Root filesystem choices as strategy id suffixed, first entry is default
+const FS_CHOICES: &[(&str, &str, &str)] = &[
+    ("_xfs", "xfs", "Recommended for most users"),
+    ("_f2fs", "f2fs", "Flash-friendly filesystem"),
+    ("_ext4", "ext4", "The traditional Linux filesystem"),
+];
 
 pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Result<(), StepError> {
     // Grab the list of disks. Loopback devices stay hidden unless explicitly
@@ -91,25 +98,37 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         .models
         .into_iter()
         .find(|model| selected_disk.partitions.iter().any(|part| part.device == model.device));
-    let mut items = viable
+    let mut display: Vec<usize> = Vec::new();
+
+    viable.iter().enumerate().for_each(|(idx, (strat, _))| {
+        let base = base_strategy_id(&strat.id);
+        if !display.iter().any(|&seen| base_strategy_id(&viable[seen].0.id) == base) {
+            display.push(idx);
+        }
+    });
+
+    let mut items = display
         .iter()
         .enumerate()
-        .map(|(idx, (strat, _))| (idx, strat.name.clone(), strat.description.clone()))
+        .map(|(pos, &idx)| {
+            let (strat, _) = &viable[idx];
+            (pos, base_strategy_id(&strat.name), strat.description.clone())
+        })
         .collect::<Vec<_>>();
     let refresh_idx = viable.len();
 
     if discovered.is_some() {
         items.push((
             refresh_idx,
-            "Refresh OS".to_string(),
+            "Refresh OS",
             "Reinstall using the settings and package selection found on the disk".to_string(),
         ));
     }
 
     let init_choice = if model.imported {
-        viable
+        display
             .iter()
-            .position(|(strat, _)| strat.id == model.storage.strategy_id)
+            .position(|&idx| base_strategy_id(&viable[idx].0.id) == base_strategy_id(&model.storage.strategy_id))
             .unwrap_or(0)
     } else if discovered.is_some() {
         refresh_idx
@@ -139,7 +158,13 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
             .find(|(strat, _)| strat.id == model.storage.strategy_id)
             .unwrap_or(&viable[0])
     } else {
-        &viable[choice]
+        let (base, _) = &viable[display[choice]];
+        let chosen_id = select_filesystem(base, &viable, &model.storage.strategy_id)?;
+
+        viable
+            .iter()
+            .find(|(strat, _)| strat.id == chosen_id)
+            .ok_or_else(|| StepError::Failed(format!("strategy {chosen_id} disappeared from the viable list")))?
     };
 
     cliclack::note(
@@ -155,6 +180,52 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
     model.storage.plan = Some(plan.clone());
 
     Ok(())
+}
+
+/// A strategy id with any filesystem-variant suffix removed
+fn base_strategy_id(id: &str) -> &str {
+    FS_CHOICES
+        .iter()
+        .find_map(|(suffix, _, _)| id.strip_suffix(suffix))
+        .unwrap_or(id)
+}
+
+/// Ask which root filesystem to use
+fn select_filesystem(
+    representative: &StrategyDefinition,
+    viable: &[(StrategyDefinition, StrategyPlan)],
+    recorded_id: &str,
+) -> Result<String, StepError> {
+    let base = base_strategy_id(&representative.id);
+    let available = FS_CHOICES
+        .iter()
+        .map(|(suffix, name, hint)| (format!("{base}{suffix}"), *name, *hint))
+        .filter(|(id, _, _)| viable.iter().any(|(strat, _)| &strat.id == id))
+        .collect::<Vec<_>>();
+
+    // Not a filesystem-variant strategy: nothing to ask
+    if available.is_empty() {
+        return Ok(representative.id.clone());
+    }
+
+    // A strategy without variants has nothing to ask about
+    if available.len() == 1 {
+        return Ok(available[0].0.clone());
+    }
+
+    let init = available.iter().position(|(id, _, _)| id == recorded_id).unwrap_or(0);
+    let items = available
+        .iter()
+        .enumerate()
+        .map(|(idx, (_, name, hint))| (idx, name.to_string(), hint.to_string()))
+        .collect::<Vec<_>>();
+    let picked = cliclack::select("Which filesystem should the root partition use?")
+        .items(&items)
+        .initial_value(init)
+        .interact()
+        .map_err(|_| StepError::UserAborted)?;
+
+    Ok(available[picked].0.clone())
 }
 
 fn render_disk(disk: &Disk) -> String {

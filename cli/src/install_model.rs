@@ -38,16 +38,36 @@ pub fn repositories(content: &str) -> Result<Vec<Repository>, KdlError> {
 
     if let Some(node) = doc.get("repositories") {
         for repo in node.iter_children() {
-            if let Some(uri) = repo.children().and_then(|child| child.get("uri")).and_then(first_arg) {
+            if let Some(uri) = repo_uri(repo) {
                 repos.push(Repository {
                     id: repo.name().value().to_string(),
-                    uri: uri.to_string(),
+                    uri,
                 });
             }
         }
     }
 
     Ok(repos)
+}
+
+/// The index URI of a repository node: a direct `uri`, or gotten from
+/// `base-uri` + `channel` + `version` + `arch` the same way moss builds it
+fn repo_uri(repo: &KdlNode) -> Option<String> {
+    let children = repo.children()?;
+
+    if let Some(uri) = children.get("uri").and_then(first_arg) {
+        return Some(uri.to_string());
+    }
+
+    let base = children.get("base-uri").and_then(first_arg)?;
+    let version = children.get("version").and_then(first_arg)?;
+    let channel = children.get("channel").and_then(first_arg).unwrap_or("main");
+    let arch = children.get("arch").and_then(first_arg).unwrap_or("x86_64");
+
+    Some(format!(
+        "{}/{channel}/{version}/{arch}/stone.index",
+        base.trim_end_matches('/'),
+    ))
 }
 
 /// Serialize the collected installation model to KDL text
@@ -350,24 +370,34 @@ mod tests {
     fn repositories_extracts_direct_urls() {
         let text = r#"
             repositories {
-                unstable {
-                uri "https://build.aerynos.dev/stream/unstable/x86_64/stone.index"
+                volatile {
+                    uri "https://cdn.aerynos.dev/main/stream/volatile/x86_64/stone.index"
                     priority 0
                 }
-                rooted {
-                    base-uri "https://build.aerynos.dev/"
+                unstable {
+                    base-uri "https://cdn.aerynos.dev/"
+                    channel main
                     version "stream/unstable"
+                    arch x86_64
+                }
+                broken {
+                    priority 0                    
                 }
             }
         "#;
 
         let repos = repositories(text).expect("must parse");
 
-        assert_eq!(repos.len(), 1);
-        assert_eq!(repos[0].id, "unstable");
+        assert_eq!(repos.len(), 2);
+        assert_eq!(repos[0].id, "volatile");
         assert_eq!(
             repos[0].uri,
-            "https://build.aerynos.dev/stream/unstable/x86_64/stone.index"
+            "https://cdn.aerynos.dev/main/stream/volatile/x86_64/stone.index"
+        );
+        assert_eq!(repos[1].id, "unstable");
+        assert_eq!(
+            repos[1].uri,
+            "https://cdn.aerynos.dev/main/stream/unstable/x86_64/stone.index"
         );
     }
 }
