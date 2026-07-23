@@ -134,7 +134,7 @@ mod tests {
 
         assert!(packages.contains(&"cosmic-comp".to_string()));
         assert!(packages.contains(&"mesa-dri-drivers".to_string()));
-        assert!(packages.contains(&"binary(bash)".to_string()));
+        assert!(packages.contains(&"bash".to_string()));
         assert!(packages.contains(&"linux-stable".to_string()));
     }
 
