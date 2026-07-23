@@ -6,8 +6,8 @@ selection name="gnome" summary="GNOME Desktop" description="Recommended for most
         "binary(baobab)"
         "binary(celluloid)"
         "binary(file-roller)"
-        "binary(firefox)"
         "binary(gnome-calculator)"
+        "binary(gnome-calendar)"
         "binary(gnome-characters)"
         "binary(gnome-clocks)"
         "binary(gnome-contacts)"
@@ -28,16 +28,10 @@ selection name="gnome" summary="GNOME Desktop" description="Recommended for most
         "binary(showtime)"
         "binary(snapshot)"
         "binary(starship)"
-        flatpak
-        font-hack
-        font-noto
-        font-noto-emoji
         gnome-backgrounds
         gnome-desktop-defaults
         gst-thumbnailers
-        liberation-fonts-ttf
         loupe
         "sysbinary(gdm)"
-        "sysbinary(plymouthd)"
     }
 }

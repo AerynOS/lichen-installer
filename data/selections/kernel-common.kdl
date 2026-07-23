@@ -1,7 +1,8 @@
 selection name="kernel-common" summary="Common kernel runtime" description="Common kernel runtime" {
     packages {
+        intel-microcode
         kmod
-        linux-firmware
+        linux-firmware-amd64-microcode
         lvm2
     }
 }

@@ -1,4 +1,4 @@
-selection name="cosmic" summary="COSMIC Desktop" description="Warning: Provided as an alpha preview" {
+selection name="cosmic" summary="COSMIC Desktop" description="Stable, but still under active development" {
 	depends {
 		desktop-common
 	}
@@ -25,17 +25,12 @@ selection name="cosmic" summary="COSMIC Desktop" description="Warning: Provided 
 		cosmic-settings
 		cosmic-settings-daemon
 		cosmic-store
+		cosmic-term
 		cosmic-wallpapers
 		cosmic-workspaces
-		firefox
-		flatpak
 		font-firacode
-		font-hack
-		font-noto
-		font-noto-emoji
-		liberation-fonts-ttf
+		font-opensans
 		os-artwork
-		"sysbinary(plymouthd)"
 		xdg-desktop-portal-cosmic
 		xdg-desktop-portal-gtk
 	}

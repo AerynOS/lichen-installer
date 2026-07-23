@@ -1,42 +1,107 @@
 selection name="base" summary="Base system" description="The base system for all AerynOS installations." {
     packages {
-        bash-completion
-        "binary(bash)"
-        "binary(dash)"
-        "binary(file)"
-        "binary(find)"
-        "binary(gawk)"
-        "binary(grep)"
-        "binary(gzip)"
-        "binary(less)"
-        "binary(moss)"
-        "binary(nano)"
-        "binary(ping)"
-        "binary(ps)"
-        "binary(python)"
-        "binary(screen)"
-        "binary(sed)"
-        "binary(setfont)"
-        "binary(ssh)"
-        "binary(sudo)"
-        "binary(tar)"
-        "binary(unzip)"
-        "binary(wget)"
-        "binary(which)"
+        acl
+        attr
+        bash
+        brotli-libs
+        bzip2-libs
         ca-certificates
+        ca-certificates-mozilla
+        ca-certificates-utils
+        cracklib
+        cryptsetup-libs
+        curl-libs
+        cyrus-sasl-libs
+        dash
         dbus
         dbus-broker
-        iproute2
+        device-mapper
+        device-mapper-event
+        device-mapper-event-libs
+        device-mapper-libs
+        elfutils-libs
+        expat
+        file
+        findutils
+        gdbm-libs
+        glibc
+        gnu-coreutils-compat
+        gzip
+        iana-etc
+        icu-libs
+        json-c
+        kbd
+        keyutils
+        kmod
+        kmod-libs
+        krb5-libs
+        layout
+        libaio
+        libblkid
+        libbpf
+        libcap
+        libcap-ng
+        libcom_err
+        libeconf
+        libedit
+        libelf
+        libfdisk
+        libffi
+        libgcc
+        libidn2
+        libmount
+        libnvme
+        libpsl
+        libpwquality
+        libseccomp
+        libsmartcols
+        libssh2
+        libstdc++
+        libtasn1
+        libunistring
+        libutempter
+        libuuid
+        libxcrypt
+        libxkbcommon
+        libxml2
         linux-pam
-        ncurses
+        linux-pam-base
+        linux-pam-libs
+        lvm2
+        lvm2-libs
+        moss
+        ncurses-base
+        ncurses-libs
+        nghttp2-libs
+        nghttp3
+        ngtcp2
         ntpd-rs
+        openldap
+        openssl-libs
+        os-info
+        p11-kit
+        p11-kit-libs
+        pcre2
+        pkgset-aeryn-base
+        qrencode
+        readline
         shadow
-        "sysbinary(fsck.ext4)"
-        "sysbinary(fsck.f2fs)"
-        "sysbinary(fsck.xfs)"
+        sudo-rs
+        system-accounts
         systemd
+        systemd-preset-aeryn
+        terminfo-foot
+        terminfo-ghostty
+        terminfo-kitty
+        terminfo-kmscon
+        terminus-font
+        thin-provisioning-tools
         tzdata
         util-linux
         uutils-coreutils
+        xkeyboard-config
+        xz
+        zlib
+        zstd-libs
     }
 }
