@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /// A user account to create on the installed system
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct User {
     /// Login name
     pub username: String,
@@ -17,7 +17,7 @@ pub struct User {
 ///
 /// Passwords are only ever carried as crypt(3) hashes; plaintext must never
 /// be stored in the model.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Model {
     /// crypt(3) has of the root password
     pub root_password_hash: Option<String>,

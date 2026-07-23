@@ -8,6 +8,7 @@ use color_eyre::Result;
 use color_eyre::eyre::eyre;
 use installer::{Installer, Model};
 use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{EnvFilter, Layer, fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt};
@@ -59,19 +60,78 @@ fn model_arg() -> Result<Option<Model>> {
     while let Some(arg) = args.next() {
         if arg == "--model" {
             return match args.next() {
-                Some(path) => {
-                    let contents = fs::read_to_string(&path)?;
-                    let mut model =
-                        install_model::from_kdl(&contents).map_err(|e| eyre!("failed to parse {path}: {e}"))?;
-                    model.imported = true;
-                    Ok(Some(model))
-                }
-                None => Err(eyre!("--model requires a path to a system-model.kdl file")),
+                Some(path) => Ok(Some(load_model(Path::new(&path))?)),
+                None => Err(eyre!("--model requires a path to a model file or directory")),
             };
         }
     }
 
     Ok(None)
+}
+
+/// Load a model from a single document, or from a directory holding
+/// install-model.kdl and/or system-model.kdl. With both documents the
+/// install-model supplies the installer fields and the system-model
+/// supplies the package set.
+fn load_model(path: &Path) -> Result<Model> {
+    if !path.is_dir() {
+        let contents = fs::read_to_string(path)?;
+        let mut model = install_model::from_kdl(&contents).map_err(|e| {
+            eyre!(
+                "failed to parse {}: {}",
+                path.display(),
+                install_model::parse_error_detail(&e)
+            )
+        })?;
+        model.imported = true;
+        return Ok(model);
+    }
+
+    let install_record = find_doc(path, "etc/moss/install-model.kdl", "install-model.kdl");
+    let system_model = find_doc(path, "usr/lib/system-model.kdl", "system-model.kdl");
+
+    if install_record.is_none() && system_model.is_none() {
+        return Err(eyre!(
+            "no install-model.kdl or system-model.kdl found under {}",
+            path.display()
+        ));
+    }
+
+    let mut model = Model::default();
+
+    if let Some(file) = install_record {
+        let contents = fs::read_to_string(&file)?;
+
+        install_model::apply_install_model(&mut model, &contents).map_err(|e| {
+            eyre!(
+                "failed to parse {}: {}",
+                file.display(),
+                install_model::parse_error_detail(&e)
+            )
+        })?;
+    }
+
+    if let Some(file) = system_model {
+        let contents = fs::read_to_string(&file)?;
+
+        install_model::apply_system_model(&mut model, &contents).map_err(|e| {
+            eyre!(
+                "failed to parse {}: {}",
+                file.display(),
+                install_model::parse_error_detail(&e)
+            )
+        })?;
+    }
+
+    model.imported = true;
+    Ok(model)
+}
+
+/// The first existing candidate document under a directory
+fn find_doc(dir: &Path, nested: &str, flat: &str) -> Option<PathBuf> {
+    [dir.join(nested), dir.join(flat)]
+        .into_iter()
+        .find(|path| path.is_file())
 }
 
 // Main entry point

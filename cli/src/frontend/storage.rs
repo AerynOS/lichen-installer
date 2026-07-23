@@ -145,8 +145,13 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
     if choice == refresh_idx
         && let Some(m) = &discovered
     {
-        *model = install_model::from_kdl(&m.contents)
-            .map_err(|e| StepError::Failed(format!("failed to parse system model from {}: {e}", m.device)))?;
+        *model = install_model::from_kdl(&m.contents).map_err(|e| {
+            StepError::Failed(format!(
+                "failed to parse system model from {}: {}",
+                m.device,
+                install_model::parse_error_detail(&e)
+            ))
+        })?;
         model.imported = true;
     }
 
