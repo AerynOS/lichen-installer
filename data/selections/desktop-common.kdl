@@ -1,20 +1,178 @@
-selection name="desktop-common" summary="Desktop base" description="Common infrastrcutre for all desktop environments" {
+selection name="desktop-common" summary="Desktop base" description="Common infrastructure for all desktop environments" {
 	depends {
 		base
 	}
 	packages {
+		abseil-cpp
+		alsa-lib
+		alsa-topology-conf
+		alsa-ucm-conf
+		aom
+		avahi
+		bluez
+		bluez-libs
+		bubblewrap
+		cairo
+		duktape
+		fdk-aac
+		fftw-libs
+		flac-libs
+		fontconfig
+		freetype
+		fribidi
+		gdk-pixbuf
+		giflib
+		glib2
+		glslang-libs
+		glycin-libs
+		glycin-loaders
+		gmmlib
+		graphite
+		gsm
+		gstreamer
+		harfbuzz
+		highway
+		hwloc-libs
+		iw
+		iwd
+		jbigkit-libs
+		lame
+		lcms2
+		leptonica
+		libarchive
+		libass
+		libavcodec
+		libavfilter
+		libavformat
+		libavutil
+		libb2
+		libbs2b
+		libcanberra
+		libdaemon
+		libdatrie
+		libdav1d
+		libdeflate
+		libdisplay-info
+		libdovi
+		libdrm
+		libdvdnav
+		libdvdread
+		libebur128
+		libevent
+		libfreeaptx
+		libgbm
+		libglvnd
+		libglvnd-egl
+		libglvnd-gles
+		libglvnd-glx
+		libgudev
+		libheif
+		libheif-plugin-dav1d
+		libheif-plugin-ffmpeg
+		libheif-plugin-jpeg
+		libheif-plugin-rav1e
+		libheif-plugin-x265
+		libjpeg-turbo
+		libjxl
+		liblc3
+		libldac
+		libmbim
+		libmysofa
+		libndp
+		libnl
+		libogg
+		libpciaccess
+		libplacebo
+		libpng
+		libqmi
+		libqrtr-glib
+		librsvg
+		libsndfile
+		libssh
+		libstone
+		libswresample
+		libswscale
+		libthai
+		libtheora
+		libtiff
+		libtool-ltldl
+		libunwind
+		libusb
+		libva
 		libva-intel-hybrid-driver
 		libva-intel-media-driver
+		libvdpau
+		libvorbis
+		libvpl
+		libvpx
+		libwebp
+		libx11
+		libxau
+		libxcb
+		libxext
+		libxfixes
+		libxft
+		libxrender
+		libxshmfence
+		libxxf86vm
+		lilv-libs
+		llvm-libs
+		lm_sensors-libs
+		lua-libs
+		lz4
+		lzo
 		mesa-dri-drivers
 		mesa-libegl
 		mesa-libgl
 		mesa-vulkan-drivers
+		modemmanager
+		modemmanager-glib
 		networkmanager
 		networkmanager-bluetooth
+		networkmanager-libnm
 		networkmanager-wifi
 		networkmanager-wwan
+		nspr
+		nss
+		ocl-icd
+		openh264
+		openjpeg
+		openmp
+		opus
+		pango
 		pipewire
+		pipewire-libs
+		pixman
 		polkit
+		polkit-libs
+		pulseaudio-libs
+		rav1e
+		rtkit
+		sbc
+		serd
+		shaderc
+		shared-mime-info
+		snappy
+		sord
+		soxr
+		speex
+		spirv-tools-libs
+		sqlite
+		sratom
+		svt-av1
+		systemd-preset-aeryn-desktop
+		tesseract-common
+		tesseract-langpack-eng
+		tesseract-libs
+		vulkan-loader
+		wayland
+		webrtc-audio-processing-2
+		wireless-regdb
 		wireplumber
+		wireplumber-libs
+		x264-libs
+		x265-libs
+		xcb-util-keysyms
+		zix
 	}
 }

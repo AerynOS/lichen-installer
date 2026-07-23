@@ -199,30 +199,30 @@ fn repositories_node() -> KdlNode {
         return node.clone();
     }
 
-    let mut volatile = KdlNode::new("volatile");
-    let mut volatile_children = KdlDocument::new();
+    let mut unstable = KdlNode::new("unstable");
+    let mut unstable_children = KdlDocument::new();
     let mut description = KdlNode::new("description");
 
-    description.push(KdlEntry::new("AerynOS volatile package stream"));
-    volatile_children.nodes_mut().push(description);
+    description.push(KdlEntry::new("AerynOS unstable package stream"));
+    unstable_children.nodes_mut().push(description);
 
     let mut base_uri = KdlNode::new("base-uri");
-    base_uri.push(KdlEntry::new("https://build.aerynos.dev/"));
-    volatile_children.nodes_mut().push(base_uri);
+    base_uri.push(KdlEntry::new("https://cdn.aerynos.dev/"));
+    unstable_children.nodes_mut().push(base_uri);
 
     let mut version = KdlNode::new("version");
-    version.push(KdlEntry::new("stream/volatile"));
-    volatile_children.nodes_mut().push(version);
+    version.push(KdlEntry::new("stream/unstable"));
+    unstable_children.nodes_mut().push(version);
 
     let mut priority = KdlNode::new("priority");
     priority.push(KdlEntry::new(0i128));
-    volatile_children.nodes_mut().push(priority);
+    unstable_children.nodes_mut().push(priority);
 
-    volatile.set_children(volatile_children);
+    unstable.set_children(unstable_children);
 
     let mut node = KdlNode::new("repositories");
     let mut children = KdlDocument::new();
-    children.nodes_mut().push(volatile);
+    children.nodes_mut().push(unstable);
     node.set_children(children);
 
     node
@@ -350,13 +350,13 @@ mod tests {
     fn repositories_extracts_direct_urls() {
         let text = r#"
             repositories {
-                volatile {
-                    uri "https://build.aerynos.dev/stream/volatile/x86_64/stone.index"
+                unstable {
+                uri "https://build.aerynos.dev/stream/unstable/x86_64/stone.index"
                     priority 0
                 }
                 rooted {
                     base-uri "https://build.aerynos.dev/"
-                    version "stream/volatile"
+                    version "stream/unstable"
                 }
             }
         "#;
@@ -364,10 +364,10 @@ mod tests {
         let repos = repositories(text).expect("must parse");
 
         assert_eq!(repos.len(), 1);
-        assert_eq!(repos[0].id, "volatile");
+        assert_eq!(repos[0].id, "unstable");
         assert_eq!(
             repos[0].uri,
-            "https://build.aerynos.dev/stream/volatile/x86_64/stone.index"
+            "https://build.aerynos.dev/stream/unstable/x86_64/stone.index"
         );
     }
 }

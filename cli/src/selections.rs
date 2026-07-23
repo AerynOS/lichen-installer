@@ -31,6 +31,8 @@ const RAW: &[&str] = &[
     include_str!("../../data/selections/develop.kdl"),
     include_str!("../../data/selections/gnome.kdl"),
     include_str!("../../data/selections/plasma.kdl"),
+    include_str!("../../data/selections/windowmanager.kdl"),
+    include_str!("../../data/selections/server.kdl"),
     include_str!("../../data/selections/kernel-common.kdl"),
     include_str!("../../data/selections/kernel-desktop.kdl"),
 ];
@@ -120,8 +122,9 @@ mod tests {
     #[test]
     fn embedded_selections_parse() {
         let selections = all();
-        assert_eq!(selections.len(), 8);
+        assert_eq!(selections.len(), 10);
         assert!(desktops().iter().any(|sel| sel.name == "cosmic"));
+        assert!(desktops().iter().any(|sel| sel.name == "server"));
         assert!(desktops().iter().all(|sel| !HIDDEN.contains(&sel.name.as_str())));
     }
 
@@ -132,7 +135,7 @@ mod tests {
         assert!(packages.contains(&"cosmic-comp".to_string()));
         assert!(packages.contains(&"mesa-dri-drivers".to_string()));
         assert!(packages.contains(&"binary(bash)".to_string()));
-        assert!(packages.contains(&"linux-desktop".to_string()));
+        assert!(packages.contains(&"linux-stable".to_string()));
     }
 
     #[test]

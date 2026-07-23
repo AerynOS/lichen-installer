@@ -4,18 +4,15 @@ selection name="plasma" summary="KDE Plasma Desktop" description="The KDE deskto
     }
     packages {
         ark
+        "binary(sddm)"
         bluedevil
+        branding-aeryn-plasma
         breeze-gtk-theme
         discover
         dolphin
         drkonqi
         elisa
-        firefox
-        flatpak
         flatpak-kcm
-        font-hack
-        font-noto
-        font-noto-emoji
         gwenview
         haruna
         kaccounts-providers
@@ -39,11 +36,9 @@ selection name="plasma" summary="KDE Plasma Desktop" description="The KDE deskto
         kwallet-pam
         kwalletmanager
         kwrite
-        liberation-fonts-ttf
         merkuro
         milou
         okular
-        os-artwork
         partitionmanager
         plasma-browser-integration
         plasma-desktop
@@ -57,8 +52,9 @@ selection name="plasma" summary="KDE Plasma Desktop" description="The KDE deskto
         plymouth-kcm
         polkit-kde-agent
         powerdevil
+        print-manager
+        sddm-kcm
         skanlite
         spectacle
-        "sysbinary(plymouthd)"
     }
 }
