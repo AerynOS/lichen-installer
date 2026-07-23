@@ -5,7 +5,7 @@
 use protocols::lichen::storage::provisioner::StrategyPlan;
 
 /// Storage and partitioning installation settings
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Model {
     /// Target disk path in /dev
     pub disk: String,

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /// Region specific installation settings
+#[derive(Debug)]
 pub struct Model {
     /// System language (i.e. "en_US")
     pub language: String,

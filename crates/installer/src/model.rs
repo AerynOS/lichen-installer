@@ -14,7 +14,7 @@ pub use accounts::User;
 ///
 /// We take care to use *copy* semantics in order to avoid any spaghetti code
 /// which would then make a separate installer backend a nightmare to implement.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Model {
     /// Region specific installation settings
     pub region: region::Model,

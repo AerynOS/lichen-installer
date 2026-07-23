@@ -16,8 +16,6 @@
 //! bare system-model can be ingested (packages) and decorated interactively
 //! into a full install-model.
 
-use std::fs;
-
 use chrono::Utc;
 use installer::{Model, User};
 use kdl::{KdlDocument, KdlEntry, KdlError, KdlNode};
@@ -53,21 +51,7 @@ pub fn repositories(content: &str) -> Result<Vec<Repository>, KdlError> {
 /// The index URI of a repository node: a direct `uri`, or gotten from
 /// `base-uri` + `channel` + `version` + `arch` the same way moss builds it
 fn repo_uri(repo: &KdlNode) -> Option<String> {
-    let children = repo.children()?;
-
-    if let Some(uri) = children.get("uri").and_then(first_arg) {
-        return Some(uri.to_string());
-    }
-
-    let base = children.get("base-uri").and_then(first_arg)?;
-    let version = children.get("version").and_then(first_arg)?;
-    let channel = children.get("channel").and_then(first_arg).unwrap_or("main");
-    let arch = children.get("arch").and_then(first_arg).unwrap_or("x86_64");
-
-    Some(format!(
-        "{}/{channel}/{version}/{arch}/stone.index",
-        base.trim_end_matches('/'),
-    ))
+    repo.children()?.get("uri").and_then(first_arg).map(str::to_string)
 }
 
 /// Serialize the collected installation model to KDL text
@@ -130,21 +114,40 @@ pub fn from_kdl(content: &str) -> Result<Model, KdlError> {
     let doc: KdlDocument = content.parse()?;
     let mut model = Model::default();
 
+    if doc.get("install-model").is_some() {
+        apply_install_model(&mut model, content)?;
+    } else {
+        apply_system_model(&mut model, content)?;
+    }
+
+    Ok(model)
+}
+
+/// Apply an install-model.kdl: the installer fiels plus,
+/// when present, the nested system-model's package set.
+pub fn apply_install_model(model: &mut Model, content: &str) -> Result<(), KdlError> {
+    let doc: KdlDocument = content.parse()?;
+
     if let Some(install) = doc.get("install-model") {
         for child in install.iter_children() {
-            apply_installer_field(&mut model, child);
+            apply_installer_field(model, child);
         }
 
         if let Some(system) = install.children().and_then(|children| children.get("system-model"))
             && let Some(inner) = system.children()
         {
-            apply_packages(&mut model, inner);
-        } else {
-            apply_packages(&mut model, &doc);
+            apply_packages(model, inner);
         }
     }
 
-    Ok(model)
+    Ok(())
+}
+
+/// Apply a bare system-model document to the model: the package set only.
+pub fn apply_system_model(model: &mut Model, content: &str) -> Result<(), KdlError> {
+    let doc: KdlDocument = content.parse()?;
+    apply_packages(model, &doc);
+    Ok(())
 }
 
 /// Apply one installer-section field to the model
@@ -212,13 +215,6 @@ fn apply_packages(model: &mut Model, doc: &KdlDocument) {
 /// The moss-owned repo node: cloned from the live system model when
 /// running on AerynOS media, otherwise a built-in default template
 fn repositories_node() -> KdlNode {
-    if let Ok(content) = fs::read_to_string(LIVE_MODEL_PATH)
-        && let Ok(doc) = content.parse::<KdlDocument>()
-        && let Some(node) = doc.get("repositories")
-    {
-        return node.clone();
-    }
-
     let mut unstable = KdlNode::new("unstable");
     let mut unstable_children = KdlDocument::new();
     let mut description = KdlNode::new("description");
@@ -287,6 +283,30 @@ fn first_arg(node: &KdlNode) -> Option<&str> {
 /// Named property of a node, as a str
 pub(crate) fn prop<'a>(node: &'a KdlNode, key: &str) -> Option<&'a str> {
     node.get(key).and_then(|value| value.as_string())
+}
+
+/// Render a KDL parse failure as a line/column detail per diagnostic
+pub fn parse_error_detail(error: &KdlError) -> String {
+    let mut details = Vec::new();
+
+    for diag in &error.diagnostics {
+        let offset = diag.span.offset().min(error.input.len());
+        let prefix = error.input.get(..offset).unwrap_or_default();
+        let line = prefix.matches('\n').count() + 1;
+        let column = prefix.rsplit('\n').next().map_or(0, str::len) + 1;
+        let message = diag.message.as_deref().unwrap_or("invalid KDL");
+
+        match diag.help.as_deref() {
+            Some(help) => details.push(format!("line {line}, column {column}: {message} ({help})")),
+            None => details.push(format!("line {line}, column {column}: {message}")),
+        }
+    }
+
+    if details.is_empty() {
+        return error.to_string();
+    }
+
+    details.join("; ")
 }
 
 #[cfg(test)]
@@ -359,6 +379,33 @@ mod tests {
     }
 
     #[test]
+    fn bare_system_model_ingests_packages() {
+        let bare = system_model_kdl(&sample_model());
+        let parsed = from_kdl(&bare).expect("bare system model must parse");
+
+        assert!(!parsed.software.packages.is_empty());
+        assert!(parsed.software.packages.contains(&"firefox".to_string()));
+        assert!(parsed.storage.disk.is_empty(), "bare model carries no installer fields");
+    }
+
+    #[test]
+    fn merged_documents_perfer_live_packages() {
+        let mut model = Model::default();
+        let record = to_kdl(&sample_model());
+        let live = "packages {\n    firefox\n    helix\n}\n";
+
+        apply_install_model(&mut model, &record).expect("record must parse");
+        apply_system_model(&mut model, live).expect("live model must parse");
+
+        assert_eq!(model.storage.disk, "/dev/vda", "fields come from the install record");
+        assert_eq!(
+            model.software.packages,
+            vec!["firefox".to_string(), "helix".to_string()],
+            "packages come from the live system model"
+        );
+    }
+
+    #[test]
     fn empty_model_still_produces_valid_kdl() {
         let text = to_kdl(&Model::default());
         let parsed = from_kdl(&text).expect("emtpy model must round trip");
@@ -388,16 +435,20 @@ mod tests {
 
         let repos = repositories(text).expect("must parse");
 
-        assert_eq!(repos.len(), 2);
+        assert_eq!(repos.len(), 1, "channel-form repos are left to moss to resolve");
         assert_eq!(repos[0].id, "volatile");
         assert_eq!(
             repos[0].uri,
             "https://cdn.aerynos.dev/main/stream/volatile/x86_64/stone.index"
         );
-        assert_eq!(repos[1].id, "unstable");
-        assert_eq!(
-            repos[1].uri,
-            "https://cdn.aerynos.dev/main/stream/unstable/x86_64/stone.index"
-        );
+    }
+
+    #[test]
+    fn parse_errors_carry_location() {
+        let truncated = "repositories {\n    volatile {\n        priority 0\n}\npackages {\n            bash\n}\n";
+        let error = from_kdl(truncated).expect_err("truncated document must fail");
+        let detail = parse_error_detail(&error);
+
+        assert!(detail.contains("line "), "detail should locate the failure: {detail}");
     }
 }

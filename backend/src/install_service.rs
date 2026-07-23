@@ -275,17 +275,9 @@ fn install_target(req: &InstallSystemRequest, progress: &(dyn Fn(String) + Sync)
         if req.repositories.is_empty() {
             warn!("no repos to prime; sync will fail unless moss bootstraps them itself");
         }
-
-        for repo in &req.repositories {
-            progress(format!("Priming repository {}", repo.id));
-            info!(repo = %repo.id, uri = %repo.uri, "Priming repository in target");
-            run(Command::new("moss")
-                .arg("-D")
-                .arg(target)
-                .args(["repo", "add"])
-                .arg(&repo.id)
-                .arg(&repo.uri))?;
-        }
+        configure_repos(target)?;
+        progress("Refreshing package index".to_string());
+        run(Command::new("moss").arg("-D").arg(target).args(["repo", "update"]))?;
 
         // moss materializes the system from the model, including populating
         // the mounted ESP/XBOOTLDR with boot entries via its blsforme
@@ -298,6 +290,7 @@ fn install_target(req: &InstallSystemRequest, progress: &(dyn Fn(String) + Sync)
                 .arg(target.join(MODEL_PATH))
                 .arg("-D")
                 .arg(target)
+                .arg("-u")
                 .arg("-y"),
             progress,
         )?;
@@ -335,8 +328,6 @@ fn configure_repos(target: &Path) -> Result<(), Status> {
 
 /// Apply the installer-owned config to the installed target
 fn configure_target(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> {
-    configure_repos(target)?;
-
     if !req.locale.is_empty() {
         fs::write(target.join("etc/locale.conf"), format!("LANG={}\n", req.locale))?;
     }
