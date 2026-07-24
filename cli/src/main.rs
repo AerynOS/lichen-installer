@@ -2,15 +2,11 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use cli::{frontend::Frontend, logging::CliclackLayer};
-use cli::{install_model, selections};
+use clap::Parser;
+use cli::{args::Args, frontend::Frontend, logging::CliclackLayer};
 use color_eyre::Result;
-use color_eyre::eyre::eyre;
-use installer::{Installer, Model};
-use std::collections::BTreeSet;
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use installer::Installer;
+use std::{env, fs::File};
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{EnvFilter, Layer, fmt::format::Format, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -55,101 +51,16 @@ fn configure_tracing() -> Result<()> {
     Ok(())
 }
 
-// Value of the --model flag when given
-fn model_arg() -> Result<Option<Model>> {
-    let mut args = env::args().skip(1);
-    while let Some(arg) = args.next() {
-        if arg == "--model" {
-            return match args.next() {
-                Some(path) => Ok(Some(load_model(Path::new(&path))?)),
-                None => Err(eyre!("--model requires a path to a model file or directory")),
-            };
-        }
-    }
-
-    Ok(None)
-}
-
-/// Load a model from a single document, or from a directory holding
-/// install-model.kdl and/or system-model.kdl. With both documents the
-/// install-model supplies the installer fields and the system-model
-/// supplies the package set.
-fn load_model(path: &Path) -> Result<Model> {
-    if !path.is_dir() {
-        let contents = fs::read_to_string(path)?;
-        let mut model = install_model::from_kdl(&contents).map_err(|e| {
-            eyre!(
-                "failed to parse {}: {}",
-                path.display(),
-                install_model::parse_error_detail(&e)
-            )
-        })?;
-        model.imported = true;
-        ensure_mandatory(&mut model)?;
-        return Ok(model);
-    }
-
-    let install_record = find_doc(path, "etc/moss/install-model.kdl", "install-model.kdl");
-    let system_model = find_doc(path, "usr/lib/system-model.kdl", "system-model.kdl");
-
-    if install_record.is_none() && system_model.is_none() {
-        return Err(eyre!(
-            "no install-model.kdl or system-model.kdl found under {}",
-            path.display()
-        ));
-    }
-
-    let mut model = Model::default();
-
-    if let Some(file) = install_record {
-        let contents = fs::read_to_string(&file)?;
-
-        install_model::apply_install_model(&mut model, &contents).map_err(|e| {
-            eyre!(
-                "failed to parse {}: {}",
-                file.display(),
-                install_model::parse_error_detail(&e)
-            )
-        })?;
-    }
-
-    if let Some(file) = system_model {
-        let contents = fs::read_to_string(&file)?;
-
-        install_model::apply_system_model(&mut model, &contents).map_err(|e| {
-            eyre!(
-                "failed to parse {}: {}",
-                file.display(),
-                install_model::parse_error_detail(&e)
-            )
-        })?;
-    }
-
-    model.imported = true;
-    ensure_mandatory(&mut model)?;
-    Ok(model)
-}
-
-/// An imported model never installs less than a bootable system
-fn ensure_mandatory(model: &mut Model) -> Result<()> {
-    let mut packages: BTreeSet<String> = model.software.packages.iter().cloned().collect();
-    packages.extend(selections::mandatory(&model.software.selection).map_err(|e| eyre!("{e}"))?);
-    model.software.packages = packages.into_iter().collect();
-    Ok(())
-}
-
-/// The first existing candidate document under a directory
-fn find_doc(dir: &Path, nested: &str, flat: &str) -> Option<PathBuf> {
-    [dir.join(nested), dir.join(flat)]
-        .into_iter()
-        .find(|path| path.is_file())
-}
-
 // Main entry point
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+
     setup_eyre();
     configure_tracing()?;
+
+    // Reject a bad model path before standing up the backend connection
+    let model = args.model().unwrap_or_else(|error| error.exit()).unwrap_or_default();
 
     let mut installer = Installer::builder()
         .add_step("storage")
@@ -174,7 +85,6 @@ async fn main() -> Result<()> {
     let info = system.get_os_info(()).await?;
 
     let iface = Frontend::new(installer, info.into_inner())?;
-    let model = model_arg()?.unwrap_or_default();
 
     iface.run(model).await?;
     Ok(())

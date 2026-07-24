@@ -123,6 +123,12 @@ pub fn from_kdl(content: &str) -> Result<Model, KdlError> {
     Ok(model)
 }
 
+/// Check isf the model passed is an install-model.kdl file
+pub fn is_install_model(content: &str) -> Result<bool, KdlError> {
+    let doc: KdlDocument = content.parse()?;
+    Ok(doc.get("install-model").is_some())
+}
+
 /// Apply an install-model.kdl: the installer fiels plus,
 /// when present, the nested system-model's package set.
 pub fn apply_install_model(model: &mut Model, content: &str) -> Result<(), KdlError> {
