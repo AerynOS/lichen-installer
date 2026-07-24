@@ -11,6 +11,8 @@ use protocols::lichen::{
 };
 
 pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepError> {
+    storage::ensure_filesystem_packages(model);
+
     let plan = model
         .storage
         .plan

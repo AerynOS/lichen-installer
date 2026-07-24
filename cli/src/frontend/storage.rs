@@ -17,14 +17,18 @@ use protocols::lichen::{
         provisioner::{StrategyDefinition, StrategyPlan, TryStrategyRequest},
     },
 };
-use std::{collections::BTreeSet, env};
+use std::{collections::BTreeSet, env, path::Path};
 
 /// Root filesystem choices as strategy id suffixed, first entry is default
 const FS_CHOICES: &[(&str, &str, &str)] = &[
     ("_xfs", "xfs", "Recommended for most users"),
     ("_f2fs", "f2fs", "Flash-friendly filesystem"),
     ("_ext4", "ext4", "The traditional Linux filesystem"),
+    ("_btrfs", "btrfs", "Copy-on-write with checksumming"),
 ];
+
+/// Userspace packages the installed system needs for its root filesystem
+const FS_PACKAGES: &[(&str, &[&str])] = &[("btrfs", &["btrfs-progs", "udisks-btrfs"])];
 
 pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Result<(), StepError> {
     // Grab the list of disks. Loopback devices stay hidden unless explicitly
@@ -199,6 +203,37 @@ fn base_strategy_id(id: &str) -> &str {
         .unwrap_or(id)
 }
 
+/// Whether the live media can create this filesystem
+fn mkfs_available(filesystem: &str) -> bool {
+    let helper = format!("mkfs.{filesystem}");
+    ["/usr/sbin", "/usr/bin", "/sbin", "/bin"]
+        .iter()
+        .any(|dir| Path::new(dir).join(&helper).exists())
+}
+
+/// Add the userspace tooling the chosen root filesystem needs.
+pub fn ensure_filesystem_packages(model: &mut Model) {
+    let Some(filesystem) = FS_CHOICES
+        .iter()
+        .find(|(suffix, _, _)| model.storage.strategy_id.ends_with(suffix))
+        .map(|(_, name, _)| *name)
+    else {
+        return;
+    };
+
+    for package in FS_PACKAGES
+        .iter()
+        .filter(|(fs, _)| *fs == filesystem)
+        .flat_map(|(_, packages)| packages.iter().copied())
+    {
+        if !model.software.packages.iter().any(|have| have == package) {
+            model.software.packages.push(package.to_string());
+        }
+    }
+
+    model.software.packages.sort();
+}
+
 /// Ask which root filesystem to use
 fn select_filesystem(
     representative: &StrategyDefinition,
@@ -206,11 +241,21 @@ fn select_filesystem(
     recorded_id: &str,
 ) -> Result<String, StepError> {
     let base = base_strategy_id(&representative.id);
-    let available = FS_CHOICES
+    let variants = FS_CHOICES
         .iter()
         .map(|(suffix, name, hint)| (format!("{base}{suffix}"), *name, *hint))
         .filter(|(id, _, _)| viable.iter().any(|(strat, _)| &strat.id == id))
         .collect::<Vec<_>>();
+
+    // Never hide everything: if the probe finds no mkfs helpers at all it is
+    // more likely wrong about where they live than right about their absence
+    let creatable = variants
+        .iter()
+        .filter(|(_, name, _)| mkfs_available(name))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let available = if creatable.is_empty() { variants } else { creatable };
 
     // Not a filesystem-variant strategy: nothing to ask
     if available.is_empty() {

@@ -366,15 +366,7 @@ fn configure_target(target: &Path, req: &InstallSystemRequest) -> Result<(), Sta
         set_passwords(target, &entries)?;
     }
 
-    // fstab root entry
-    if let Some(root) = req.mounts.iter().find(|mount| mount.mountpoint == "/") {
-        let partuuid = blkid(&root.device, "PARTUUID")?;
-        let fstype = blkid(&root.device, "TYPE")?;
-        fs::write(
-            target.join("etc//fstab"),
-            format!("# /etc/fstab: static filesystem information.\nPARTUUID={partuuid} / {fstype} defaults 0 1\n"),
-        )?;
-    }
+    write_fstab(target, req)?;
 
     Ok(())
 }
@@ -522,5 +514,43 @@ fn run(command: &mut Command) -> Result<(), Status> {
             detail.trim()
         )));
     }
+    Ok(())
+}
+
+/// Mount options and fsck pass for the target filesystem.
+fn fstab_params(mountpoint: &str, fstype: &str) -> (&'static str, u8) {
+    match (mountpoint, fstype) {
+        ("/", _) => ("defaults", 1),
+        (_, "vfat") => ("defaults,umask=0077", 0),
+        _ => ("defaults", 2),
+    }
+}
+
+fn write_fstab(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> {
+    let mut mounts = req
+        .mounts
+        .iter()
+        .filter(|mount| mount.mountpoint.starts_with('/'))
+        .collect::<Vec<_>>();
+    mounts.sort_by_key(|mount| mount.mountpoint.len());
+
+    if !mounts.iter().any(|mount| mount.mountpoint == "/") {
+        return Err(Status::internal("target has no root mount; refusing to write fstab"));
+    }
+
+    let mut fstab = String::from("# /etc/fstab: static filesystem information.\n");
+
+    for mount in mounts {
+        let partuuid = blkid(&mount.device, "PARTUUID")?;
+        let fstype = blkid(&mount.device, "TYPE")?;
+        let (options, pass) = fstab_params(&mount.mountpoint, &fstype);
+
+        fstab.push_str(&format!(
+            "PARTUUID={partuuid} {} {fstype} {options} 0 {pass}\n",
+            mount.mountpoint
+        ));
+    }
+
+    fs::write(target.join("etc/fstab"), fstab)?;
     Ok(())
 }
