@@ -5,16 +5,18 @@
 
 //! Frontend module
 
+use crate::CliStep;
 use color_eyre::eyre;
-use console::{style, Emoji};
-use installer::{Icon, Installer, Step};
+use console::{Emoji, style};
+use installer::{Icon, Installer, Model, Step};
 use protocols::lichen::osinfo::OsInfo;
 
-use crate::CliStep;
-
+pub mod accounts;
+pub mod desktop;
 pub mod locale;
 pub mod storage;
 pub mod summary;
+pub mod timezone;
 
 pub struct Frontend {
     pub installer: Installer,
@@ -43,14 +45,14 @@ impl Frontend {
         Ok(())
     }
 
-    async fn perform_step(&self, step: &dyn Step) -> eyre::Result<()> {
+    async fn perform_step(&self, step: &dyn Step, model: &mut Model) -> eyre::Result<()> {
         let cli_step = step
             .as_any()
             .downcast_ref::<CliStep>()
             .ok_or_else(|| eyre::eyre!("Failed to downcast step to CliStep"))?;
         Self::render_step(cli_step)?;
 
-        cli_step.step.run(&self.info, &self.installer).await?;
+        cli_step.step.run(&self.info, &self.installer, model).await?;
         cliclack::outro("")?;
         Ok(())
     }
@@ -73,7 +75,7 @@ impl Frontend {
         Ok(())
     }
 
-    async fn run_internal(&mut self) -> eyre::Result<()> {
+    async fn run_internal(&mut self, mut model: Model) -> eyre::Result<()> {
         // Render the intro
         self.render_intro()?;
 
@@ -83,7 +85,8 @@ impl Frontend {
                 .installer
                 .active_step()
                 .ok_or_else(|| eyre::eyre!("No active step found in the installer"))?;
-            Self::perform_step(self, step).await?;
+
+            Self::perform_step(self, step, &mut model).await?;
 
             if !self.installer.has_next() {
                 break;
@@ -95,17 +98,19 @@ impl Frontend {
         // Make the summary step available and go to it
         self.installer.make_step_available("summary")?;
         self.installer.goto_step("summary")?;
+
         let step = self
             .installer
             .active_step()
             .ok_or_else(|| eyre::eyre!("No active step found in the installer"))?;
-        Self::perform_step(self, step).await?;
+
+        Self::perform_step(self, step, &mut model).await?;
         Ok(())
     }
 
     // Run the CLI installer
-    pub async fn run(mut self) -> eyre::Result<()> {
-        self.run_internal().await?;
+    pub async fn run(mut self, model: Model) -> eyre::Result<()> {
+        self.run_internal(model).await?;
         Ok(())
     }
 }

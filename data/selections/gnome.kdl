@@ -1,0 +1,37 @@
+selection name="gnome" summary="GNOME Desktop" description="Recommended for most users." {
+    depends {
+        "desktop-common"
+    }
+    packages {
+        "binary(baobab)"
+        "binary(celluloid)"
+        "binary(file-roller)"
+        "binary(gnome-calculator)"
+        "binary(gnome-calendar)"
+        "binary(gnome-characters)"
+        "binary(gnome-clocks)"
+        "binary(gnome-contacts)"
+        "binary(gnome-control-center)"
+        "binary(gnome-disks)"
+        "binary(gnome-font-viewer)"
+        "binary(gnome-software)"
+        "binary(gnome-system-monitor)"
+        "binary(gnome-text-editor)"
+        "binary(gnome-tweaks)"
+        "binary(gnome-weather)"
+        "binary(loupe)"
+        "binary(nautilus)"
+        "binary(papers)"
+        "binary(ptyxis)"
+        "binary(org.gnome.Decibels)"
+        "binary(resources)"
+        "binary(showtime)"
+        "binary(snapshot)"
+        "binary(starship)"
+        gnome-backgrounds
+        gnome-desktop-defaults
+        gst-thumbnailers
+        loupe
+        "sysbinary(gdm)"
+    }
+}

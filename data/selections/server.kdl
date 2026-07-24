@@ -1,0 +1,10 @@
+selection name="server" summary="Headless server (EXPERTS ONLY)" description="No graphical drivers or sound support. Intended for servers." {
+    depends {
+        base
+    }
+    packages {
+        "binary(nmtui)"
+        networkmanager
+        "sysbinary(sshd)"
+    }
+}

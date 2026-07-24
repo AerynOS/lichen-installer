@@ -1,0 +1,9 @@
+selection name="windowmanager" summary="Console only (EXPERTS ONLY)" description="Graphics and sound drivers with no desktop environment or window manager." {
+    depends {
+        desktop-common
+    }
+    packages {
+        "binary(nmtui)"
+        networkmanager-wifi
+    }
+}
