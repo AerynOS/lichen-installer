@@ -2,11 +2,12 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use cli::install_model;
 use cli::{frontend::Frontend, logging::CliclackLayer};
+use cli::{install_model, selections};
 use color_eyre::Result;
 use color_eyre::eyre::eyre;
 use installer::{Installer, Model};
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -84,6 +85,7 @@ fn load_model(path: &Path) -> Result<Model> {
             )
         })?;
         model.imported = true;
+        ensure_mandatory(&mut model)?;
         return Ok(model);
     }
 
@@ -124,7 +126,16 @@ fn load_model(path: &Path) -> Result<Model> {
     }
 
     model.imported = true;
+    ensure_mandatory(&mut model)?;
     Ok(model)
+}
+
+/// An imported model never installs less than a bootable system
+fn ensure_mandatory(model: &mut Model) -> Result<()> {
+    let mut packages: BTreeSet<String> = model.software.packages.iter().cloned().collect();
+    packages.extend(selections::mandatory(&model.software.selection).map_err(|e| eyre!("{e}"))?);
+    model.software.packages = packages.into_iter().collect();
+    Ok(())
 }
 
 /// The first existing candidate document under a directory

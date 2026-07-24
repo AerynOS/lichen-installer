@@ -8,7 +8,7 @@
 //! allowing users to choose which disk to install AerynOS on, preview the
 //! partitioning strategy, and apply it.
 
-use crate::{CliStep, FrontendStep, install_model};
+use crate::{CliStep, FrontendStep, install_model, selections};
 use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
 use protocols::lichen::{
     osinfo::OsInfo,
@@ -17,7 +17,7 @@ use protocols::lichen::{
         provisioner::{StrategyDefinition, StrategyPlan, TryStrategyRequest},
     },
 };
-use std::env;
+use std::{collections::BTreeSet, env};
 
 /// Root filesystem choices as strategy id suffixed, first entry is default
 const FS_CHOICES: &[(&str, &str, &str)] = &[
@@ -153,6 +153,10 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
             ))
         })?;
         model.imported = true;
+
+        let mut packages: BTreeSet<String> = model.software.packages.iter().cloned().collect();
+        packages.extend(selections::mandatory(&model.software.selection)?);
+        model.software.packages = packages.into_iter().collect();
     }
 
     let (strategy, plan) = if choice == refresh_idx {

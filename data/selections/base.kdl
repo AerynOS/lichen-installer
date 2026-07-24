@@ -1,108 +1,23 @@
 selection name="base" summary="Base system" description="The base system for all AerynOS installations." {
     packages {
-        acl
-        attr
         bash
-        brotli-libs
-        bzip2-libs
-        ca-certificates
-        ca-certificates-mozilla
-        ca-certificates-utils
-        cracklib
-        cryptsetup-libs
-        curl-libs
-        cyrus-sasl-libs
         dash
-        dbus
-        dbus-broker
-        device-mapper
-        device-mapper-event
-        device-mapper-event-libs
-        device-mapper-libs
-        elfutils-libs
-        expat
-        file
-        findutils
-        gdbm-libs
-        glibc
-        gnu-coreutils-compat
-        gzip
-        iana-etc
-        icu-libs
-        json-c
-        kbd
-        keyutils
-        kmod
-        kmod-libs
-        krb5-libs
-        layout
-        libaio
-        libblkid
-        libbpf
-        libcap
-        libcap-ng
-        libcom_err
-        libeconf
-        libedit
-        libelf
-        libfdisk
-        libffi
-        libgcc
-        libidn2
-        libmount
-        libnvme
-        libpsl
-        libpwquality
-        libseccomp
-        libsmartcols
-        libssh2
-        libstdc++
-        libtasn1
-        libunistring
-        libutempter
-        libuuid
-        libxcrypt
-        libxkbcommon
-        libxml2
-        linux-pam
-        linux-pam-base
-        linux-pam-libs
-        lvm2
-        lvm2-libs
         moss
-        ncurses-base
-        ncurses-libs
-        nghttp2-libs
-        nghttp3
-        ngtcp2
+        sudo
+        dbus-broker
+        kmod
+        linux-pam
+        lvm2
         ntpd-rs
-        openldap
-        openssl-libs
-        os-info
-        p11-kit
-        p11-kit-libs
-        pcre2
-        pkgset-aeryn-base
-        qrencode
-        readline
-        sed
         shadow
-        sudo-rs
-        system-accounts
         systemd
+        systemd-boot
+        systemd-coredump
         systemd-preset-aeryn
-        terminfo-foot
-        terminfo-ghostty
-        terminfo-kitty
-        terminfo-kmscon
-        terminus-font
-        thin-provisioning-tools
+        systemd-resolved
+        systemd-udev
         tzdata
         util-linux
         uutils-coreutils
-        xkeyboard-config
-        xz
-        zlib
-        zstd-libs
     }
 }

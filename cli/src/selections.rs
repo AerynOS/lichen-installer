@@ -115,6 +115,16 @@ fn parse(raw: &str) -> Selection {
     }
 }
 
+/// The packages every installation must carry regardless of what an imported
+/// model lists: the base system and kernel closures
+pub fn mandatory(selection: &str) -> Result<Vec<String>, StepError> {
+    if selection == "server" {
+        resolve("base")
+    } else {
+        resolve("desktop-common")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,6 +146,21 @@ mod tests {
         assert!(packages.contains(&"mesa-dri-drivers".to_string()));
         assert!(packages.contains(&"bash".to_string()));
         assert!(packages.contains(&"linux-stable".to_string()));
+    }
+
+    #[test]
+    fn mandatory_covers_boot_essentials() {
+        let desktop = mandatory("cosmic").expect("desktop-common must resolve");
+        assert!(desktop.contains(&"systemd-udev".to_string()));
+        assert!(desktop.contains(&"linux-stable".to_string()));
+        assert!(desktop.contains(&"mesa-dri-drivers".to_string()));
+
+        let server = mandatory("server").expect("base must resolve");
+        assert!(server.contains(&"systemd-udev".to_string()));
+        assert!(
+            !server.contains(&"mesa-dri-drivers".to_string()),
+            "server stays headless"
+        );
     }
 
     #[test]
