@@ -8,6 +8,7 @@ use color_eyre::eyre;
 use installer::{DisplayInfo, Installer, Model, Step};
 use protocols::lichen::osinfo::OsInfo;
 
+pub mod args;
 pub mod frontend;
 pub mod install_model;
 pub mod logging;
