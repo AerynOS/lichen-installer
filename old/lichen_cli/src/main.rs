@@ -377,7 +377,7 @@ fn main() -> color_eyre::Result<()> {
         "
     );
     let installer_success = format!(
-        "🎉 🥳 Succesfully installed {}! Reboot now to start using it!",
+        "🎉 🥳 Successfully installed {}! Reboot now to start using it!",
         style("Serpent OS").bold()
     );
     multi.clear()?;

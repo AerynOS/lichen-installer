@@ -3,14 +3,14 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-pub(crate) struct BuiltinStategy {
+pub(crate) struct BuiltinStrategy {
     pub name: &'static str,
     pub contents: &'static str,
 }
 
-const USE_WHOLE_DISK: BuiltinStategy = BuiltinStategy {
+const USE_WHOLE_DISK: BuiltinStrategy = BuiltinStrategy {
     name: "use_whole_disk.kdl",
     contents: include_str!("../../data/strategies/use_whole_disk.kdl"),
 };
 
-pub(crate) const ALL: &[BuiltinStategy] = &[USE_WHOLE_DISK];
+pub(crate) const ALL: &[BuiltinStrategy] = &[USE_WHOLE_DISK];

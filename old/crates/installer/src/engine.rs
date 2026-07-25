@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-//! Concrete implementation of the isntaller
+//! Concrete implementation of the installer
 
 use std::path::Path;
 
@@ -214,7 +214,7 @@ impl Installer {
         s.extend(mounts);
         c.extend(unmounts);
 
-        // HAX:
+        // HEX:
         s.push(Step::add_repo(AddRepo {
             uri: "https://dev.serpentos.com/volatile/x86_64/stone.index".into(),
             name: "unstable".into(),
