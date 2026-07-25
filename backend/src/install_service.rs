@@ -520,6 +520,7 @@ fn run(command: &mut Command) -> Result<(), Status> {
 /// Mount options and fsck pass for the target filesystem.
 fn fstab_params(mountpoint: &str, fstype: &str) -> (&'static str, u8) {
     match (mountpoint, fstype) {
+        ("/", "bcachefs") => ("defaults", 0),
         ("/", _) => ("defaults", 1),
         (_, "vfat") => ("defaults,umask=0077", 0),
         _ => ("defaults", 2),

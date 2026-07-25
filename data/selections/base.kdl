@@ -5,9 +5,11 @@ selection name="base" summary="Base system" description="The base system for all
         moss
         sudo
         dbus-broker
+        dracut
         kmod
         linux-pam
         lvm2
+        ncurses
         ntpd-rs
         shadow
         systemd
@@ -19,5 +21,6 @@ selection name="base" summary="Base system" description="The base system for all
         tzdata
         util-linux
         uutils-coreutils
+        zstd
     }
 }
