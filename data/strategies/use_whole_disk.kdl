@@ -173,7 +173,7 @@ strategy name="whole_disk_btrfs" summary="Wipe and use entire disk" {
         constraints {
             min (GiB)25
         }
-        type (GUID)"linux-fs"
+        type (GUID)"linux-root"
         filesystem {
             type "btrfs"
             label "ROOT"

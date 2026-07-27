@@ -4,12 +4,14 @@
 
 //! Install service: privileged operations for installing the target system
 
-use crate::auth::AuthService;
+pub mod btrfs;
+
+use crate::{auth::AuthService, install_service::btrfs::is_btrfs};
 use disks::BlockDevice;
 use lichen_macros::authorized;
 use protocols::lichen::install::{
-    DiscoverSystemModelsResponse, DiscoveredModel, InstallProgress, InstallSystemRequest, WriteSystemModelRequest,
-    WriteSystemModelResponse,
+    DiscoverSystemModelsResponse, DiscoveredModel, InstallProgress, InstallSystemRequest, TargetMount,
+    WriteSystemModelRequest, WriteSystemModelResponse,
     install_server::{Install, InstallServer},
 };
 use std::{
@@ -60,6 +62,15 @@ const UNSTABLE_REPO: &str = r#"unstable {
 #[derive(Debug)]
 pub struct Service {
     auth: Arc<AuthService>,
+}
+
+/// A target mount resolved to its on-disk filesystem type, with a btrfs root
+/// expanded into its @ (root) and @home subvolumes.
+struct ResolvedMount {
+    device: String,
+    mountpoint: String,
+    fstype: String,
+    subvol: Option<String>,
 }
 
 /// Creates a new Install gRPC server instance using the default Service implementation
@@ -178,7 +189,17 @@ fn write_to_target(root_device: &str, system_model: &str, install_model: &str) -
 
     fs::create_dir_all(target)?;
 
-    run(Command::new("mount").args([root_device, target.to_str().expect("expected a target")]))?;
+    // The model must land where the OS will: for btrfs that's the @ subvolume,
+    // not the top level, which the installed system never mounts.
+    let mut mount = Command::new("mount");
+
+    if is_btrfs(root_device)? {
+        btrfs::create_subvolumes(target, root_device)?;
+        mount.args(["-o", &format!("subvol={}", btrfs::ROOT_SUBVOL)]);
+    }
+
+    mount.arg(root_device).arg(target);
+    run(&mut mount)?;
 
     let result = (|| -> Result<(), Status> {
         let system_model_path = target.join(SYSTEM_MODEL_PATH);
@@ -257,8 +278,15 @@ fn install_target(request: &InstallSystemRequest, progress: &(dyn Fn(String) + S
     // Sort by path length so a parent is always mounted before its children:
     // mounting /boot after /boot/efi would shadow the ESP, and blsforme would
     // write boot entries into a directory nothing ever reads.
-    let mut mounts = request.mounts.clone();
-    mounts.sort_by_key(|mount| mount.mountpoint.len());
+    let mounts = resolve_mounts(&request.mounts)?;
+
+    // If this is a btrfs root, create the @/@/home subvolumes
+    if let Some(root) = mounts
+        .iter()
+        .find(|mount| mount.mountpoint == "/" && mount.subvol.is_some())
+    {
+        btrfs::create_subvolumes(target, &root.device)?;
+    }
 
     let mut mounted: Vec<PathBuf> = Vec::new();
     let result = (|| -> Result<(), Status> {
@@ -266,7 +294,14 @@ fn install_target(request: &InstallSystemRequest, progress: &(dyn Fn(String) + S
         for mount in &mounts {
             let mountpoint = target.join(mount.mountpoint.trim_start_matches('/'));
             fs::create_dir_all(&mountpoint)?;
-            run(Command::new("mount").args([&mount.device, &mountpoint.to_string_lossy().into()]))?;
+
+            let mut cmd = Command::new("mount");
+
+            if let Some(subvol) = &mount.subvol {
+                cmd.args(["-o", &format!("subvol={subvol}")]);
+            }
+            cmd.arg(&mount.device).arg(&mountpoint);
+            run(&mut cmd)?;
             mounted.push(mountpoint);
         }
 
@@ -549,22 +584,22 @@ fn run(command: &mut Command) -> Result<(), Status> {
 /// any non-zero pass drops the boot into emergency mode on a healthy
 /// filesystem. vfat carries no UNIX permissions, so without an explicit
 /// umask the ESP and XBOOTLDR contents are world readable.
-fn fstab_params(mountpoint: &str, fstype: &str) -> (&'static str, u8) {
-    match (mountpoint, fstype) {
+fn fstab_params(mountpoint: &str, fstype: &str, subvol: Option<&str>) -> (String, u8) {
+    let (base, pass) = match (mountpoint, fstype) {
+        (_, "btrfs") => ("defaults", 0u8),
         ("/", "bcachefs") => ("defaults", 0),
         ("/", _) => ("defaults", 1),
         (_, "vfat") => ("defaults,umask=0077", 0),
         _ => ("defaults", 2),
+    };
+    match subvol {
+        Some(subvol) => (format!("{base},subvol={subvol}"), pass),
+        None => (base.to_string(), pass),
     }
 }
 
-fn write_fstab(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> {
-    let mut mounts = req
-        .mounts
-        .iter()
-        .filter(|mount| mount.mountpoint.starts_with('/'))
-        .collect::<Vec<_>>();
-    mounts.sort_by_key(|mount| mount.mountpoint.len());
+fn write_fstab(target: &Path, request: &InstallSystemRequest) -> Result<(), Status> {
+    let mounts = resolve_mounts(&request.mounts)?;
 
     // A rootless fstable is worse than none: the initrd hands off to a system
     // that can neither remount / nor find /boot.
@@ -576,15 +611,38 @@ fn write_fstab(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> 
 
     for mount in mounts {
         let partuuid = blkid(&mount.device, "PARTUUID")?;
-        let fstype = blkid(&mount.device, "TYPE")?;
-        let (options, pass) = fstab_params(&mount.mountpoint, &fstype);
+        let (options, pass) = fstab_params(&mount.mountpoint, &mount.fstype, mount.subvol.as_deref());
 
         fstab.push_str(&format!(
-            "PARTUUID={partuuid} {} {fstype} {options} 0 {pass}\n",
-            mount.mountpoint
+            "PARTUUID={partuuid} {} {} {options} 0 {pass}\n",
+            mount.mountpoint, mount.fstype
         ));
     }
 
     fs::write(target.join("etc/fstab"), fstab)?;
     Ok(())
+}
+
+/// Probe each requested mount's filesystem and expand a btrfs root into the
+/// default @/@home subvolume layout. Sorted so parents precede children.
+fn resolve_mounts(mounts: &[TargetMount]) -> Result<Vec<ResolvedMount>, Status> {
+    let mut resolved = Vec::new();
+
+    for mount in mounts {
+        if !mount.mountpoint.starts_with('/') {
+            continue;
+        }
+        resolved.push(ResolvedMount {
+            device: mount.device.clone(),
+            mountpoint: mount.mountpoint.clone(),
+            fstype: blkid(&mount.device, "TYPE")?,
+            subvol: None,
+        });
+    }
+
+    // Checks to see if it's a btrfs filesystem. If it is, it creates @/@home, if it
+    // isn't it's a no-op function.
+    btrfs::expand_subvolumes(&mut resolved);
+    resolved.sort_by_key(|mount| mount.mountpoint.len());
+    Ok(resolved)
 }
