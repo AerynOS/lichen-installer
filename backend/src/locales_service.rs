@@ -6,7 +6,7 @@
 use std::{env, sync::Arc};
 
 use locales_rs::Registry;
-use protocols::lichen::locales::{locales_server, GetLocaleRequest, ListLocalesResponse, Locale};
+use protocols::lichen::locales::{GetLocaleRequest, ListLocalesResponse, Locale, locales_server};
 use tokio::process::Command;
 use tonic::{Request, Response};
 use tracing::info;

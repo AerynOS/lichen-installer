@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
         .await?;
 
     // Make every choice step available; summary is unlocked by the
-    // frontend once the other steps have ran
+    // frontend once the other steps have run
     installer.make_step_available("storage")?;
     installer.make_step_available("locale")?;
     installer.make_step_available("timezone")?;

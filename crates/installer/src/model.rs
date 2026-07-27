@@ -12,8 +12,9 @@ pub use accounts::User;
 
 /// Installation settings
 ///
-/// We take care to use *copy* semantics in order to avoid any spaghetti code
-/// which would then make a separate installer backend a nightmare to implement.
+/// The installer's in-memory state. Projected into all model output documents:
+/// `software.packages` becomes the system-model, and the whole struct becomes
+/// the install-model record. Neither document is the source of truth for it.
 #[derive(Debug, Default)]
 pub struct Model {
     /// Region specific installation settings
@@ -24,6 +25,6 @@ pub struct Model {
     pub accounts: accounts::Model,
     /// Software selections
     pub software: software::Model,
-    /// An imported model from OS refresh option or --model flag
+    /// Set when the model came from an OS refresh or an imported document.
     pub imported: bool,
 }

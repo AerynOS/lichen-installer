@@ -19,8 +19,8 @@ use protocols::lichen::{
 };
 use std::{collections::BTreeSet, env, path::Path};
 
-/// Root filesystem choices as strategy id suffixed, first entry is default
-const FS_CHOICES: &[(&str, &str, &str)] = &[
+/// Root filesystem choices as strategy id suffixes, first entry is default
+const FILESYSTEM_CHOICES: &[(&str, &str, &str)] = &[
     ("_xfs", "xfs", "Recommended for most users"),
     ("_f2fs", "f2fs", "Flash-friendly filesystem"),
     ("_ext4", "ext4", "The traditional Linux filesystem"),
@@ -29,7 +29,7 @@ const FS_CHOICES: &[(&str, &str, &str)] = &[
 ];
 
 /// Userspace packages the installed system needs for its root filesystem
-const FS_PACKAGES: &[(&str, &[&str])] = &[
+const FILESYSTEM_PACKAGES: &[(&str, &[&str])] = &[
     ("btrfs", &["btrfs-progs", "udisks-btrfs"]),
     ("bcachefs", &["bcachefs-tools", "bcachefs-module-stable"]),
 ];
@@ -47,7 +47,7 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         .disks
         .iter()
         .enumerate()
-        .map(|(idx, dsk)| (idx, render_disk(dsk), "".to_string()))
+        .map(|(index, disk)| (index, render_disk(disk), "".to_string()))
         .collect::<Vec<_>>();
     let os_name = info
         .metadata
@@ -55,17 +55,17 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         .and_then(|meta| meta.identity.as_ref())
         .map(|ident| ident.display.clone())
         .unwrap_or("Unknown OS".into());
-    let initial_idx = disks
+    let initial_index = disks
         .disks
         .iter()
         .position(|disk| disk.device == model.storage.disk)
         .unwrap_or(0);
-    let idx = cliclack::select(format!("What disk would you like to install {os_name} on?"))
+    let selected_index = cliclack::select(format!("What disk would you like to install {os_name} on?"))
         .items(&renderable_devices)
-        .initial_value(initial_idx)
+        .initial_value(initial_index)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
-    let selected_disk = disks.disks.get(idx).ok_or(StepError::UserAborted)?;
+    let selected_disk = disks.disks.get(selected_index).ok_or(StepError::UserAborted)?;
 
     tracing::info!("Selected disk: {:?}", selected_disk.device);
 
@@ -75,10 +75,10 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
     // Keep only the strategies that yield at least one plan for the chosen disk
     let mut viable = Vec::new();
 
-    for strat in &strategies {
+    for strategy in &strategies {
         let plans = provisioner
             .try_strategy(TryStrategyRequest {
-                strategy: strat.id.clone(),
+                strategy: strategy.id.clone(),
                 disks: vec![selected_disk.device.clone()],
             })
             .await?
@@ -86,7 +86,7 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
             .plans;
 
         if let Some(plan) = plans.into_iter().next() {
-            viable.push((strat.clone(), plan));
+            viable.push((strategy.clone(), plan));
         }
     }
 
@@ -97,7 +97,7 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         )));
     }
 
-    // Look for a system model left by a previous installation on this disk
+    // Look for a system-model left by a previous installation on this disk
     let mut install = installer.install().await?;
     let discovered = install
         .discover_system_models(())
@@ -108,8 +108,8 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         .find(|model| selected_disk.partitions.iter().any(|part| part.device == model.device));
     let mut display: Vec<usize> = Vec::new();
 
-    viable.iter().enumerate().for_each(|(idx, (strat, _))| {
-        let base = base_strategy_id(&strat.id);
+    viable.iter().enumerate().for_each(|(idx, (strategy, _))| {
+        let base = base_strategy_id(&strategy.id);
         if !display.iter().any(|&seen| base_strategy_id(&viable[seen].0.id) == base) {
             display.push(idx);
         }
@@ -119,44 +119,44 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         .iter()
         .enumerate()
         .map(|(pos, &idx)| {
-            let (strat, _) = &viable[idx];
-            (pos, base_strategy_id(&strat.name), strat.description.clone())
+            let (strategy, _) = &viable[idx];
+            (pos, base_strategy_id(&strategy.name), strategy.description.clone())
         })
         .collect::<Vec<_>>();
-    let refresh_idx = viable.len();
+    let refresh_index = viable.len();
 
     if discovered.is_some() {
         items.push((
-            refresh_idx,
+            refresh_index,
             "Refresh OS",
             "Reinstall using the settings and package selection found on the disk".to_string(),
         ));
     }
 
-    let init_choice = if model.imported {
+    let initial_choice = if model.imported {
         display
             .iter()
             .position(|&idx| base_strategy_id(&viable[idx].0.id) == base_strategy_id(&model.storage.strategy_id))
             .unwrap_or(0)
     } else if discovered.is_some() {
-        refresh_idx
+        refresh_index
     } else {
         0
     };
 
     let choice = cliclack::select("How should the disk be partitioned?")
         .items(&items)
-        .initial_value(init_choice)
+        .initial_value(initial_choice)
         .interact()
         .map_err(|_| StepError::UserAborted)?;
 
-    if choice == refresh_idx
-        && let Some(m) = &discovered
+    if choice == refresh_index
+        && let Some(discovered_model) = &discovered
     {
-        *model = install_model::from_kdl(&m.contents).map_err(|e| {
+        *model = install_model::from_kdl(&discovered_model.contents).map_err(|e| {
             StepError::Failed(format!(
-                "failed to parse system model from {}: {}",
-                m.device,
+                "failed to parse model from {}: {}",
+                discovered_model.device,
                 install_model::parse_error_detail(&e)
             ))
         })?;
@@ -167,12 +167,12 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
         model.software.packages = packages.into_iter().collect();
     }
 
-    let (strategy, plan) = if choice == refresh_idx {
+    let (strategy, plan) = if choice == refresh_index {
         // Partition with the strategy recorded in the discovered model,
         // falling back to the first viable strategy for this disk
         viable
             .iter()
-            .find(|(strat, _)| strat.id == model.storage.strategy_id)
+            .find(|(strategy, _)| strategy.id == model.storage.strategy_id)
             .unwrap_or(&viable[0])
     } else {
         let (base, _) = &viable[display[choice]];
@@ -180,7 +180,7 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
 
         viable
             .iter()
-            .find(|(strat, _)| strat.id == chosen_id)
+            .find(|(strategy, _)| strategy.id == chosen_id)
             .ok_or_else(|| StepError::Failed(format!("strategy {chosen_id} disappeared from the viable list")))?
     };
 
@@ -201,7 +201,7 @@ pub async fn run(info: &OsInfo, installer: &Installer, model: &mut Model) -> Res
 
 /// A strategy id with any filesystem-variant suffix removed
 fn base_strategy_id(id: &str) -> &str {
-    FS_CHOICES
+    FILESYSTEM_CHOICES
         .iter()
         .find_map(|(suffix, _, _)| id.strip_suffix(suffix))
         .unwrap_or(id)
@@ -217,7 +217,7 @@ fn mkfs_available(filesystem: &str) -> bool {
 
 /// Add the userspace tooling the chosen root filesystem needs.
 pub fn ensure_filesystem_packages(model: &mut Model) {
-    let Some(filesystem) = FS_CHOICES
+    let Some(filesystem) = FILESYSTEM_CHOICES
         .iter()
         .find(|(suffix, _, _)| model.storage.strategy_id.ends_with(suffix))
         .map(|(_, name, _)| *name)
@@ -225,9 +225,9 @@ pub fn ensure_filesystem_packages(model: &mut Model) {
         return;
     };
 
-    for package in FS_PACKAGES
+    for package in FILESYSTEM_PACKAGES
         .iter()
-        .filter(|(fs, _)| *fs == filesystem)
+        .filter(|(filesystem_name, _)| *filesystem_name == filesystem)
         .flat_map(|(_, packages)| packages.iter().copied())
     {
         if !model.software.packages.iter().any(|have| have == package) {
@@ -245,10 +245,10 @@ fn select_filesystem(
     recorded_id: &str,
 ) -> Result<String, StepError> {
     let base = base_strategy_id(&representative.id);
-    let variants = FS_CHOICES
+    let variants = FILESYSTEM_CHOICES
         .iter()
         .map(|(suffix, name, hint)| (format!("{base}{suffix}"), *name, *hint))
-        .filter(|(id, _, _)| viable.iter().any(|(strat, _)| &strat.id == id))
+        .filter(|(id, _, _)| viable.iter().any(|(strategy, _)| &strategy.id == id))
         .collect::<Vec<_>>();
 
     // Never hide everything: if the probe finds no mkfs helpers at all it is
@@ -304,13 +304,13 @@ pub fn render_plan(plan: &StrategyPlan) -> String {
     if !plan.filesystems.is_empty() {
         out.push_str("\nFilesystems:\n");
 
-        plan.filesystems.iter().for_each(|pf| {
-            if let Some(fs) = &pf.filesystem {
+        plan.filesystems.iter().for_each(|planned_filesystem| {
+            if let Some(filesystem) = &planned_filesystem.filesystem {
                 out.push_str(&format!(
                     "  {} -> {} ({})\n",
-                    pf.device,
-                    fs.filesystem_type,
-                    fs.label.as_deref().unwrap_or("no label"),
+                    planned_filesystem.device,
+                    filesystem.filesystem_type,
+                    filesystem.label.as_deref().unwrap_or("no label"),
                 ));
             }
         });

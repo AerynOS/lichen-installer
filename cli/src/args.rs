@@ -43,7 +43,7 @@ impl Args {
 
             if !is_install_model(&contents).map_err(|e| parse_failure(path, &e))? {
                 return Err(invalid_value(format!(
-                    "{} has no install-model block; pass a bare system model with --system-model",
+                    "{} has no install-model block; pass a bare system-model with --system-model",
                     path.display()
                 )));
             }
@@ -56,7 +56,7 @@ impl Args {
 
             if is_install_model(&contents).map_err(|e| parse_failure(path, &e))? {
                 return Err(invalid_value(format!(
-                    "{} is an install-model, not a system model; pass it with --install-model",
+                    "{} is an install-model, not a system-model; pass it with --install-model",
                     path.display()
                 )));
             }
@@ -70,7 +70,7 @@ impl Args {
     }
 }
 
-/// An imported model never install lass than a bootable system
+/// An imported model never installs less than a bootable system
 fn ensure_mandatory(model: &mut Model) -> Result<(), clap::Error> {
     let mut packages: BTreeSet<String> = model.software.packages.iter().cloned().collect();
     packages.extend(mandatory(&model.software.selection).map_err(|e| invalid_value(e.to_string()))?);

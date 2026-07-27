@@ -4,7 +4,7 @@
 
 //! Account configuration step
 //!
-//! Passwords are hased with sha512-crypt immediately after confirmation;
+//! Passwords are hashed with sha512-crypt immediately after confirmation;
 //! only the hashes enter the model.
 
 use crate::{CliStep, FrontendStep};
@@ -79,7 +79,7 @@ fn ask_password(who: &str) -> Result<String, StepError> {
             return Ok(first);
         }
 
-        let _ = cliclack::log::warning("Passowrds do not match, please try again");
+        let _ = cliclack::log::warning("Passwords do not match, please try again");
     }
 }
 

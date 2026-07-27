@@ -25,7 +25,7 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
     text.push_str(&format!("Locale:       {}\n", model.region.language));
     text.push_str(&format!("Timezone:     {}\n", model.region.timezone));
     text.push_str(&format!(
-        "Desktop:      {} ({}packages)\n",
+        "Desktop:      {} ({} packages)\n",
         model.software.selection,
         model.software.packages.len()
     ));
@@ -52,6 +52,8 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
         "Erase {} and install? ALL DATA ON THIS DISK WILL BE DESTROYED.",
         model.storage.disk,
     ))
+    // Default to no: the six prompts before this one all default to yes, and
+    // a reflexive Enter here wipes the disk.
     .initial_value(false)
     .interact()
     .map_err(|_| StepError::UserAborted)?;
@@ -80,7 +82,7 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
     let system_model = install_model::system_model_kdl(model);
     let install_record = install_model::to_kdl(model);
     let repositories = install_model::repositories(&system_model)
-        .map_err(|e| StepError::Failed(format!("generated model failed to parse: {e}")))?
+        .map_err(|e| StepError::Failed(format!("generated system-model failed to parse: {e}")))?
         .into_iter()
         .map(|repo| RepoSpec {
             id: repo.id,
@@ -91,7 +93,7 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
     install
         .write_system_model(WriteSystemModelRequest {
             root_device,
-            contents: system_model,
+            system_model,
             install_model: install_record,
         })
         .await?;
@@ -107,6 +109,9 @@ pub async fn run(installer: &Installer, model: &mut Model) -> Result<(), StepErr
         .collect();
 
     let spinner = cliclack::spinner();
+    // Count-match, not subset-match: this is the last gate before an
+    // irreversible whole-disk wipe, and applying the strategy to only the
+    // disks that happened to resolve is not what the user approved.
     spinner.start("Installing AerynOS to the target disk (this can take several minutes)");
 
     let mut stream = match install

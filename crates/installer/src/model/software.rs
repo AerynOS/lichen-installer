@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-/// SOftware installation settings
+/// Software installation settings
 #[derive(Debug, Default)]
 pub struct Model {
     /// Name of the chosen desktop environment

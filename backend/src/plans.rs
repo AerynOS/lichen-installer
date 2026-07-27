@@ -22,23 +22,24 @@ use std::collections::HashMap;
 use tonic::Status;
 use tracing::info;
 
-/// Compute all viable plans for the named strategy agains the given devices.
+/// Compute all viable plans for the named strategy against the given devices.
 pub(crate) fn try_strategy(
     strategies: &HashMap<String, StrategyDefinition>,
     name: &str,
     devices: &[BlockDevice],
 ) -> Vec<StrategyPlan> {
-    let mut prov = Provisioner::new();
+    let mut provisioner = Provisioner::new();
 
     strategies.values().for_each(|strategy| {
-        prov.add_strategy(strategy);
+        provisioner.add_strategy(strategy);
     });
 
     devices.iter().for_each(|dev| {
-        prov.push_device(dev);
+        provisioner.push_device(dev);
     });
 
-    prov.plan()
+    provisioner
+        .plan()
         .iter()
         .filter(|plan| plan.strategy.name == name)
         .map(plan_to_proto)
@@ -55,16 +56,16 @@ pub(crate) fn apply_strategy(
     name: &str,
     devices: &[BlockDevice],
 ) -> Result<StrategyPlan, Status> {
-    let mut prov = Provisioner::new();
+    let mut provisioner = Provisioner::new();
 
     strategies.values().for_each(|strategy| {
-        prov.add_strategy(strategy);
+        provisioner.add_strategy(strategy);
     });
     devices.iter().for_each(|dev| {
-        prov.push_device(dev);
+        provisioner.push_device(dev);
     });
 
-    let all_plans = prov.plan();
+    let all_plans = provisioner.plan();
     let mut matching = all_plans.iter().filter(|plan| plan.strategy.name == name);
     let plan = matching.next().ok_or_else(|| {
         Status::failed_precondition(format!("strategy `{name}` is not applicable to the provided disks"))
@@ -76,13 +77,18 @@ pub(crate) fn apply_strategy(
         )));
     }
 
-    // Validate every disk before mutating any of them
+    // Validate every disk before mutating any of them: failing on the second
+    // disk of a multi-disk plan would leave the first one already wiped and
+    // the user with no installed system and no way back
     for (disk, device_plan) in &plan.device_assignments {
         DiskWriter::new(device_plan.device, &device_plan.planner)
             .simulate()
             .map_err(|err| Status::internal(format!("simulation failed for {disk}: {err}")))?;
     }
 
+    // Validate every disk before mutating any of them: failing on the second
+    // disk of a multi-disk plan would leave the first one already wiped and
+    // the user with no installed system and no way back.
     for (disk, device_plan) in &plan.device_assignments {
         info!(
             disk = %disk,
@@ -96,6 +102,12 @@ pub(crate) fn apply_strategy(
 
     for (device, filesystem) in &plan.filesystems {
         info!(device = %device.display(), filesystem = ?filesystem, "creating filesystem");
+
+        // DiskWriter zeroes only the first 2MiB of a new partition. btrfs, xfs, and
+        // bcachefs keep superblock past that, and an unforced mkfs refuses to run
+        // when it finds one, aborting after the disk has already been repartitioned.
+        // Forcing is safe here only because the plan is user-confirmed before apply_strategy
+        // is reached.
         let output = Formatter::new(filesystem.clone())
             .force()
             .format(device)

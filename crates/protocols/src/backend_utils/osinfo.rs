@@ -12,16 +12,14 @@ use crate::lichen::osinfo;
 /// Maps all fields from the native OSInfo struct to the corresponding protocol buffer message
 impl From<OsInfo> for osinfo::OsInfo {
     fn from(info: OsInfo) -> Self {
-        let osinfo = osinfo::OsInfo {
+        osinfo::OsInfo {
             version: info.version.clone(),
             start_date: info.start_date.to_rfc3339(),
             metadata: Some(convert_metadata(&info.metadata)),
             system: Some(convert_system(&info.system)),
             resources: Some(convert_resources(&info.resources)),
             security_contact: info.security_contact.as_ref().map(convert_security_contact),
-        };
-
-        osinfo
+        }
     }
 }
 

@@ -14,6 +14,10 @@ fn main() {
 
     tonic_build::configure()
         .build_server(true)
+        .type_attribute(
+            "lichen.storage.provisioner.PlannedChange.change",
+            "#[allow(clippy::large_enum_variant)]",
+        )
         .compile_protos(
             &[
                 "locales.proto",

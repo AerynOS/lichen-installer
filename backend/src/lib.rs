@@ -3,6 +3,10 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+// tonic::Status is ~176 bytes and every service method must return
+// Result<Response<T>, Status> to satisfy the generated traits, so there is no
+// Err variant that can be shrank
+#![allow(clippy::result_large_err)]
 mod builtin_strategies;
 
 pub mod auth;

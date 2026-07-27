@@ -53,13 +53,19 @@ pub enum Error {
     ConnectionError(#[from] protocols::Error),
 
     #[error("Backend error: {0}")]
-    BackendError(#[from] tonic::Status),
+    BackendError(#[from] Box<tonic::Status>),
 
     #[error("Failed to load step plugin: {0}")]
     StepLoadError(String),
 
     #[error("Navigation error: {0}")]
     NavigationError(#[from] NavigationError),
+}
+
+impl From<tonic::Status> for Error {
+    fn from(status: tonic::Status) -> Self {
+        Self::BackendError(Box::new(status))
+    }
 }
 
 impl InstallerBuilder {

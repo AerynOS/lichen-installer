@@ -6,7 +6,7 @@ use crate::{CliStep, FrontendStep, selections};
 use installer::{DisplayInfo, Icon, Installer, Model, StepError, register_step};
 
 pub async fn run(_installer: &Installer, model: &mut Model) -> Result<(), StepError> {
-    if model.imported && !model.region.timezone.is_empty() {
+    if model.imported && !model.software.selection.is_empty() {
         let _ = cliclack::log::info(format!(
             "Using imported desktop environment {} with {} packages",
             model.software.selection,
@@ -15,8 +15,8 @@ pub async fn run(_installer: &Installer, model: &mut Model) -> Result<(), StepEr
         return Ok(());
     }
 
-    let d_envs = selections::desktops();
-    let items = d_envs
+    let desktops = selections::desktops();
+    let items = desktops
         .iter()
         .map(|sel| (sel.name.clone(), sel.summary.clone(), sel.description.clone()))
         .collect::<Vec<_>>();
@@ -26,7 +26,7 @@ pub async fn run(_installer: &Installer, model: &mut Model) -> Result<(), StepEr
         .map_err(|_| StepError::UserAborted)?;
     let packages = selections::resolve(&picked)?;
 
-    tracing::info!("Selected DE {picked} with {} packages", packages.len());
+    tracing::info!("Selected desktop environment {picked} with {} packages", packages.len());
     model.software.selection = picked;
     model.software.packages = packages;
 

@@ -10,25 +10,25 @@ import "google/protobuf/empty.proto";
 
 // Install service: privileged operations for materializing the target system
 service Install {
-  // Write the system model document into the freshly provisioned target rootfs
+  // Write the system-model document into the freshly provisioned target rootfs
   rpc WriteSystemModel(WriteSystemModelRequest) returns (WriteSystemModelResponse) {}
 
-  // Search attached disks for system models left by previous installations
+  // Search attached disks for system-models left by previous installations
   rpc DiscoverSystemModels(google.protobuf.Empty) returns (DiscoverSystemModelsResponse) {}
 
   // Install the OS onto the provisioned target and configure it.
   // Requires the target mounts from an applied strategy; runs moss against
-  // the target root using the system model written by WriteSystemModel
+  // the target root using the system-model written by WriteSystemModel
   rpc InstallSystem(InstallSystemRequest) returns (stream InstallProgress) {}
 }
 
 // Request message for WriteSystemModel
 message WriteSystemModelRequest {
-  // Partion device holding the target root filesystem
+  // Partition device holding the target root filesystem
   string root_device = 1;
 
   // Full text of the system-model.kdl document
-  string contents = 2;
+  string system_model = 2;
 
   // Full text of the install-model.kdl record (installer superset)
   string install_model = 3;
@@ -38,7 +38,7 @@ message WriteSystemModelRequest {
 message WriteSystemModelResponse {
 }
 
-// A system model found on an existing filesystem
+// A system-model found on an existing filesystem
 message DiscoveredModel {
   // Partition device the model was found on
   string device = 1;
@@ -47,7 +47,7 @@ message DiscoveredModel {
   string contents = 2;
 }
 
-// Response message for DiscoverySystemModels
+// Response message for DiscoverSystemModels
 message DiscoverSystemModelsResponse {
   repeated DiscoveredModel models = 1;
 }

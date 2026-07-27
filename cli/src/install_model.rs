@@ -20,16 +20,14 @@ use chrono::Utc;
 use installer::{Model, User};
 use kdl::{KdlDocument, KdlEntry, KdlError, KdlNode};
 
-pub const LIVE_MODEL_PATH: &str = "/usr/lib/system-model.kdl";
-
-/// A repository definition extracted from a system model document
+/// A repository definition extracted from a system-model document
 pub struct Repository {
     pub id: String,
     pub uri: String,
 }
 
 /// Extract directly-addressable repos carrying a `uri` node
-/// from a system model document
+/// from a system-model document
 pub fn repositories(content: &str) -> Result<Vec<Repository>, KdlError> {
     let doc: KdlDocument = content.parse()?;
     let mut repos = Vec::new();
@@ -108,7 +106,7 @@ pub fn to_kdl(model: &Model) -> String {
     doc.to_string()
 }
 
-/// Parse a previously emitted model, toleratnly: absent nodes leave the
+/// Parse a previously emitted model, tolerantly: absent nodes leave the
 /// corresponding fields at their defaults so the steps prompt as usual.
 pub fn from_kdl(content: &str) -> Result<Model, KdlError> {
     let doc: KdlDocument = content.parse()?;
@@ -123,13 +121,13 @@ pub fn from_kdl(content: &str) -> Result<Model, KdlError> {
     Ok(model)
 }
 
-/// Check isf the model passed is an install-model.kdl file
+/// Check if the model passed is an install-model.kdl file
 pub fn is_install_model(content: &str) -> Result<bool, KdlError> {
     let doc: KdlDocument = content.parse()?;
     Ok(doc.get("install-model").is_some())
 }
 
-/// Apply an install-model.kdl: the installer fiels plus,
+/// Apply an install-model.kdl: the installer fields plus,
 /// when present, the nested system-model's package set.
 pub fn apply_install_model(model: &mut Model, content: &str) -> Result<(), KdlError> {
     let doc: KdlDocument = content.parse()?;
@@ -218,7 +216,7 @@ fn apply_packages(model: &mut Model, doc: &KdlDocument) {
     }
 }
 
-/// The moss-owned repo node: cloned from the live system model when
+/// The moss-owned repo node: cloned from the live system-model when
 /// running on AerynOS media, otherwise a built-in default template
 fn repositories_node() -> KdlNode {
     let mut unstable = KdlNode::new("unstable");
@@ -387,7 +385,7 @@ mod tests {
     #[test]
     fn bare_system_model_ingests_packages() {
         let bare = system_model_kdl(&sample_model());
-        let parsed = from_kdl(&bare).expect("bare system model must parse");
+        let parsed = from_kdl(&bare).expect("bare system-model must parse");
 
         assert!(!parsed.software.packages.is_empty());
         assert!(parsed.software.packages.contains(&"firefox".to_string()));
@@ -395,7 +393,7 @@ mod tests {
     }
 
     #[test]
-    fn merged_documents_perfer_live_packages() {
+    fn merged_documents_prefer_live_packages() {
         let mut model = Model::default();
         let record = to_kdl(&sample_model());
         let live = "packages {\n    firefox\n    helix\n}\n";
@@ -407,14 +405,14 @@ mod tests {
         assert_eq!(
             model.software.packages,
             vec!["firefox".to_string(), "helix".to_string()],
-            "packages come from the live system model"
+            "packages come from the live system-model"
         );
     }
 
     #[test]
     fn empty_model_still_produces_valid_kdl() {
         let text = to_kdl(&Model::default());
-        let parsed = from_kdl(&text).expect("emtpy model must round trip");
+        let parsed = from_kdl(&text).expect("empty model must round trip");
         assert!(parsed.software.packages.is_empty());
         assert!(parsed.accounts.user.is_none());
     }

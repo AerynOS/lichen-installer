@@ -24,7 +24,7 @@ pub struct Selection {
 }
 
 /// Raw embedded selection documents
-const RAW: &[&str] = &[
+const RAW_SELECTIONS: &[&str] = &[
     include_str!("../../data/selections/base.kdl"),
     include_str!("../../data/selections/desktop-common.kdl"),
     include_str!("../../data/selections/cosmic.kdl"),
@@ -47,14 +47,14 @@ const HIDDEN: &[&str] = &["base", "desktop-common", "develop", "kernel-common", 
 
 /// Parse all embedded selections
 pub fn all() -> Vec<Selection> {
-    RAW.iter().map(|raw| parse(raw)).collect()
+    RAW_SELECTIONS.iter().map(|raw| parse(raw)).collect()
 }
 
 /// The user-facing desktop choices
 pub fn desktops() -> Vec<Selection> {
     all()
         .into_iter()
-        .filter(|de| !HIDDEN.contains(&de.name.as_str()))
+        .filter(|selection| !HIDDEN.contains(&selection.name.as_str()))
         .collect()
 }
 

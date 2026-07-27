@@ -1,4 +1,4 @@
-strategy name="whole_disk_xfs" summary="Wipe and use an entire disk" {
+strategy name="whole_disk_xfs" summary="Wipe and use entire disk" {
     // Find a disk with the given constraints and then label it
     // We may find "any disk"
     // The result is stored in "root_disk" (disk=..)
@@ -10,6 +10,10 @@ strategy name="whole_disk_xfs" summary="Wipe and use an entire disk" {
 
     // Create a partition table. Defaults to GPT
     create-partition-table type="gpt" disk="root_disk"
+    
+    // 256 MiB ESP plus 3840 MiB XBOOTLDR is a flat 4 GiB of boot space, fixed
+    // rather than ranged so every instal has identical room for several
+    // kernels and initrds regardless of disk size.
 
     // Create the ESP
     create-partition disk="root_disk" role="boot" id="esp" {
@@ -208,6 +212,10 @@ strategy name="whole_disk_bcachefs" summary="Wipe and use entire disk" {
         }
     }
 
+    // linux-root, not linux-fs like the other strategies: there is no bcachefs
+    // superblock prober, so blsforme cannot resolve a filesystem UUID for
+    // root= and the boot entry falls back to the partition type. Only the
+    // discoverable-partitions root GUID is auto-mounted.
     create-partition disk="root_disk" id="root" role="root" {
         constraints {
             min (GiB)25

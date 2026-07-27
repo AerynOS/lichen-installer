@@ -7,9 +7,8 @@ use crate::{auth::AuthService, builtin_strategies, plans};
 use disks::BlockDevice;
 use lichen_macros::authorized;
 use protocols::lichen::storage::provisioner::{
-    self,
+    self, ApplyStrategyRequest, ApplyStrategyResponse, ListStrategiesResponse, TryStrategyRequest, TryStrategyResponse,
     provisioner_server::{self, ProvisionerServer},
-    ApplyStrategyRequest, ApplyStrategyResponse, ListStrategiesResponse, TryStrategyRequest, TryStrategyResponse,
 };
 use provisioning::{Parser, StrategyDefinition};
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -33,16 +32,16 @@ pub async fn service(auth: Arc<AuthService>) -> color_eyre::Result<ProvisionerSe
     for builtin in builtin_strategies::ALL {
         debug!("Loading builtin strategy: {}", builtin.name);
         let parser = Parser::new(builtin.name, builtin.contents)?;
-        let n_strats = parser.strategies.len();
+        let strategy_count = parser.strategies.len();
 
-        for strat in parser.strategies {
+        for strategy in parser.strategies {
             info!(
                 filename = builtin.name,
-                strategies = n_strats,
+                strategies = strategy_count,
                 "Loaded strategy: {}",
-                strat.name,
+                strategy.name,
             );
-            inner.builtin_strategies.insert(strat.name.clone(), strat);
+            inner.builtin_strategies.insert(strategy.name.clone(), strategy);
         }
     }
 
@@ -59,8 +58,11 @@ impl Service {
         }
 
         let mut devices = BlockDevice::discover()?;
-        devices.retain(|dev| requested.iter().any(|path| Path::new(path) == dev.device()));
+        devices.retain(|device| requested.iter().any(|path| Path::new(path) == device.device()));
 
+        // Count-match, not subset-match: this is the last gate before an
+        // irreversible whole-disk wipe, and applying the strategy to only the
+        // disks that happened to resolve is not what the user approved.
         if devices.len() != requested.len() {
             return Err(Status::not_found("one or more requested disks were not found"));
         }
