@@ -12,7 +12,7 @@ strategy name="whole_disk_xfs" summary="Wipe and use entire disk" {
     create-partition-table type="gpt" disk="root_disk"
     
     // 256 MiB ESP plus 3840 MiB XBOOTLDR is a flat 4 GiB of boot space, fixed
-    // rather than ranged so every instal has identical room for several
+    // rather than ranged so every install has identical room for several
     // kernels and initrds regardless of disk size.
 
     // Create the ESP

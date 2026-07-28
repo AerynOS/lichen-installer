@@ -280,7 +280,7 @@ fn install_target(request: &InstallSystemRequest, progress: &(dyn Fn(String) + S
     // write boot entries into a directory nothing ever reads.
     let mounts = resolve_mounts(&request.mounts)?;
 
-    // If this is a btrfs root, create the @/@/home subvolumes
+    // If this is a btrfs root, create the @/@home subvolumes
     if let Some(root) = mounts
         .iter()
         .find(|mount| mount.mountpoint == "/" && mount.subvol.is_some())
