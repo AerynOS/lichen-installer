@@ -1,7 +1,7 @@
 [package]
 name = "backend"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Backend for the Lichen installer"
 repository = "https://github.com/AerynOS/lichen-installer"
 
@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 disks.workspace = true
 provisioning.workspace = true
+partitioning.workspace = true
 lichen-macros = { path = "../crates/lichen-macros" }
 nix = { workspace = true, features = ["fs", "process", "signal"] }
 protocols = { path = "../crates/protocols", features = ["backend-utils"] }

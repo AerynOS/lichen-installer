@@ -3,25 +3,23 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use os_info::OSInfo;
+use os_info::OsInfo;
 
 use crate::lichen::osinfo;
 
 /// Converts an os_info::OSInfo reference into a protocol buffer lichen::osinfo::OsInfo
 ///
 /// Maps all fields from the native OSInfo struct to the corresponding protocol buffer message
-impl From<OSInfo> for osinfo::OsInfo {
-    fn from(info: OSInfo) -> Self {
-        let osinfo = osinfo::OsInfo {
+impl From<OsInfo> for osinfo::OsInfo {
+    fn from(info: OsInfo) -> Self {
+        osinfo::OsInfo {
             version: info.version.clone(),
             start_date: info.start_date.to_rfc3339(),
             metadata: Some(convert_metadata(&info.metadata)),
             system: Some(convert_system(&info.system)),
             resources: Some(convert_resources(&info.resources)),
             security_contact: info.security_contact.as_ref().map(convert_security_contact),
-        };
-
-        osinfo
+        }
     }
 }
 
@@ -81,6 +79,9 @@ fn convert_maintainer(maintainer: &os_info::Maintainer) -> osinfo::Maintainer {
             os_info::MaintainerRole::Founder => osinfo::MaintainerRole::Founder as i32,
             os_info::MaintainerRole::Maintainer => osinfo::MaintainerRole::Maintainer as i32,
             os_info::MaintainerRole::Contributor => osinfo::MaintainerRole::Contributor as i32,
+            os_info::MaintainerRole::Steward => {
+                todo!();
+            }
         },
         email: maintainer.email.clone(),
         start_date: maintainer.start_date.as_ref().map(|d| d.to_rfc3339()),

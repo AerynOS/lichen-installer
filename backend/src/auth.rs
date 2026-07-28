@@ -5,7 +5,7 @@
 
 use nix::libc::gid_t;
 use tokio::net::unix::{pid_t, uid_t};
-use tonic::{transport::server::UdsConnectInfo, Request, Status};
+use tonic::{Request, Status, transport::server::UdsConnectInfo};
 
 #[derive(Debug, Clone)]
 pub enum AuthInfo {

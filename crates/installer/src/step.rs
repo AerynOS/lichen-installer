@@ -15,13 +15,19 @@ pub enum StepError {
     Failed(String),
 
     #[error("Protocol error: {0}")]
-    ProtocolError(#[from] tonic::Status),
+    ProtocolError(#[from] Box<tonic::Status>),
 
     #[error("Installer error: {0}")]
     InstallerError(#[from] crate::Error),
 
     #[error("User aborted installation")]
     UserAborted,
+}
+
+impl From<tonic::Status> for StepError {
+    fn from(status: tonic::Status) -> Self {
+        Self::ProtocolError(Box::new(status))
+    }
 }
 
 /// A single step in the installation process. Each step represents a distinct phase

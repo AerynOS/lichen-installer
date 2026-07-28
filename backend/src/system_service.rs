@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use lichen_macros::authorized;
-use protocols::lichen::system::{system_server, SystemShutdownResponse, SystemStatusResponse};
+use protocols::lichen::system::{SystemShutdownResponse, SystemStatusResponse, system_server};
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::Request;
 use tonic::Response;

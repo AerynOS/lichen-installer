@@ -10,9 +10,14 @@ fn main() {
     println!("cargo:rerun-if-changed=storage/disks.proto");
     println!("cargo:rerun-if-changed=storage/provisioner.proto");
     println!("cargo:rerun-if-changed=storage/types.proto");
+    println!("cargo:rerun-if-changed=install.proto");
 
     tonic_build::configure()
         .build_server(true)
+        .type_attribute(
+            "lichen.storage.provisioner.PlannedChange.change",
+            "#[allow(clippy::large_enum_variant)]",
+        )
         .compile_protos(
             &[
                 "locales.proto",
@@ -21,6 +26,7 @@ fn main() {
                 "storage/disks.proto",
                 "storage/provisioner.proto",
                 "storage/types.proto",
+                "install.proto",
             ],
             &["."],
         )

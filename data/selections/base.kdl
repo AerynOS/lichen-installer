@@ -1,0 +1,26 @@
+selection name="base" summary="Base system" description="The base system for all AerynOS installations." {
+    packages {
+        bash
+        dash
+        moss
+        sudo
+        dbus-broker
+        dracut
+        kmod
+        linux-pam
+        lvm2
+        ncurses
+        ntpd-rs
+        shadow
+        systemd
+        systemd-boot
+        systemd-coredump
+        systemd-preset-aeryn
+        systemd-resolved
+        systemd-udev
+        tzdata
+        util-linux
+        uutils-coreutils
+        zstd
+    }
+}

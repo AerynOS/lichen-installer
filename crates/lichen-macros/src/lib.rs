@@ -7,7 +7,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::parse::ParseStream;
 use syn::parse_macro_input;
-use syn::{parse::Parse, Ident, LitStr, Result};
+use syn::{Ident, LitStr, Result, parse::Parse};
 
 /// Parse the arguments of the authorized attribute
 struct AuthorizedArgs {

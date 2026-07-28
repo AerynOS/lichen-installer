@@ -1,0 +1,22 @@
+selection name="desktop-common" summary="Desktop base" description="Common infrastructure for all desktop environments" {
+	depends {
+		base
+	}
+	packages {
+		firefox
+		libva-intel-hybrid-driver
+		libva-intel-media-driver
+		mesa-dri-drivers
+		mesa-libegl
+		mesa-libgl
+		mesa-vulkan-drivers
+		networkmanager
+		networkmanager-bluetooth
+		networkmanager-wifi
+		networkmanager-wwan
+		pipewire
+		polkit
+		systemd-preset-aeryn-desktop
+		wireplumber
+	}
+}

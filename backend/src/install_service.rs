@@ -1,0 +1,590 @@
+// SPDX-FileCopyrightText: Copyright © 2026 AerynOS Developers
+//
+// SPDX-License-Identifier: MPL-2.0
+
+//! Install service: privileged operations for installing the target system
+
+use crate::auth::AuthService;
+use disks::BlockDevice;
+use lichen_macros::authorized;
+use protocols::lichen::install::{
+    DiscoverSystemModelsResponse, DiscoveredModel, InstallProgress, InstallSystemRequest, WriteSystemModelRequest,
+    WriteSystemModelResponse,
+    install_server::{Install, InstallServer},
+};
+use std::{
+    collections::VecDeque,
+    fs,
+    io::{BufRead, BufReader, Write},
+    os::unix,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread,
+    time::Duration,
+};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::{Request, Response, Status};
+use tracing::{info, warn};
+
+/// Where the target root is temp mounted while writing
+const TARGET_MOUNT: &str = "/run/lichen/target";
+/// Where candidate partitions are briefly mounted read-only while probing
+/// for a previous installation's system-model
+const PROBE_MOUNT: &str = "/run/lichen/probe";
+/// Location of the system-model inside the target root; moss reads and
+/// rewrites this exact path on the installed system
+const SYSTEM_MODEL_PATH: &str = "usr/lib/system-model.kdl";
+/// The installer's permanent record on the target: the install-model superset
+/// wrapping the system-model
+const INSTALL_MODEL_PATH: &str = "etc/moss/install-model.kdl";
+/// Repo config directory inside the target root
+const REPO_DIR: &str = "etc/moss/repo.d";
+/// The unstable repo kdl entry
+const UNSTABLE_REPO: &str = r#"unstable {
+    description "AerynOS unstable package stream"
+    base-uri "https://cdn.aerynos.dev/"
+    channel main
+    version "stream/unstable"
+    arch x86_64
+    priority 0
+    active #true
+}
+"#;
+
+/// Service represents the install service implementation
+#[derive(Debug)]
+pub struct Service {
+    auth: Arc<AuthService>,
+}
+
+/// Creates a new Install gRPC server instance using the default Service implementation
+pub fn service(auth: Arc<AuthService>) -> InstallServer<Service> {
+    InstallServer::new(Service { auth })
+}
+
+#[tonic::async_trait]
+impl Install for Service {
+    type InstallSystemStream = ReceiverStream<Result<InstallProgress, Status>>;
+
+    #[authorized("com.aerynos.lichen.install.write-model")]
+    async fn write_system_model(
+        &self,
+        request: Request<WriteSystemModelRequest>,
+    ) -> Result<Response<WriteSystemModelResponse>, tonic::Status> {
+        let request = request.into_inner();
+        info!(root_device = %request.root_device, "Writing system-model target");
+
+        if request.root_device.is_empty() {
+            return Err(Status::invalid_argument("no root device provided"));
+        }
+        if !Path::new(&request.root_device).exists() {
+            return Err(Status::not_found(format!("no such device: {}", request.root_device)));
+        }
+
+        tokio::task::block_in_place(|| {
+            write_to_target(&request.root_device, &request.system_model, &request.install_model)
+        })?;
+
+        Ok(Response::new(WriteSystemModelResponse {}))
+    }
+
+    #[authorized("com.aerynos.lichen.install.discover")]
+    async fn discover_system_models(
+        &self,
+        request: Request<()>,
+    ) -> Result<Response<DiscoverSystemModelsResponse>, tonic::Status> {
+        let _ = request;
+        info!("Probing disks for previous installation system-models");
+        let models = tokio::task::block_in_place(discover_models)?;
+
+        Ok(Response::new(DiscoverSystemModelsResponse { models }))
+    }
+
+    #[authorized("com.aerynos.lichen.install.system")]
+    async fn install_system(
+        &self,
+        request: Request<InstallSystemRequest>,
+    ) -> Result<Response<Self::InstallSystemStream>, tonic::Status> {
+        let request = request.into_inner();
+        // Without a root mount, moss would sync the whole OS into the empty
+        // directory on the live medium's tmpfs: an install that reports
+        // success and leaves the disk untouched.
+        if !request.mounts.iter().any(|mount| mount.mountpoint == "/") {
+            return Err(Status::invalid_argument("no root mount provided"));
+        }
+
+        info!("Installing system to target");
+
+        let (tx, rx) = mpsc::channel(64);
+        let done = Arc::new(AtomicBool::new(false));
+
+        // Keep-alive ticks so the stream never idles, even while moss is quiet
+        {
+            let tx = tx.clone();
+            let done = done.clone();
+
+            thread::spawn(move || {
+                while !done.load(Ordering::Relaxed) {
+                    thread::sleep(Duration::from_secs(10));
+
+                    let update = InstallProgress {
+                        message: String::new(),
+                        finished: false,
+                    };
+
+                    if tx.blocking_send(Ok(update)).is_err() {
+                        break;
+                    }
+                }
+            });
+        }
+
+        thread::spawn(move || {
+            let progress = |message: String| {
+                let _ = tx.blocking_send(Ok(InstallProgress {
+                    message,
+                    finished: false,
+                }));
+            };
+            let result = install_target(&request, &progress);
+
+            done.store(true, Ordering::Relaxed);
+            match result {
+                Ok(()) => {
+                    let _ = tx.blocking_send(Ok(InstallProgress {
+                        message: "Installation complete".to_string(),
+                        finished: true,
+                    }));
+                }
+                Err(status) => {
+                    let _ = tx.blocking_send(Err(status));
+                }
+            }
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
+}
+
+/// Mount the target root, write the model, and always unmount again,
+/// even when the write fails
+fn write_to_target(root_device: &str, system_model: &str, install_model: &str) -> Result<(), Status> {
+    let target = Path::new(TARGET_MOUNT);
+
+    fs::create_dir_all(target)?;
+
+    run(Command::new("mount").args([root_device, target.to_str().expect("expected a target")]))?;
+
+    let result = (|| -> Result<(), Status> {
+        let system_model_path = target.join(SYSTEM_MODEL_PATH);
+        let install_model_path = target.join(INSTALL_MODEL_PATH);
+
+        if let Some(parent) = system_model_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        if let Some(parent) = install_model_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(&system_model_path, system_model)?;
+        fs::write(&install_model_path, install_model)?;
+
+        Ok(())
+    })();
+
+    let unmounted = run(Command::new("umount").arg(target));
+
+    result.and(unmounted)
+}
+
+/// Probe every unmounted partition read-only for a system-model from a previous
+/// installation. Unmountable partitions are auto skipped.
+fn discover_models() -> Result<Vec<DiscoveredModel>, Status> {
+    let probe = Path::new(PROBE_MOUNT);
+    fs::create_dir_all(probe)?;
+
+    let mounted = fs::read_to_string("/proc/self/mounts").unwrap_or_default();
+    let devices = BlockDevice::discover()?;
+    let mut models = Vec::new();
+
+    for device in &devices {
+        for partition in device.partitions() {
+            let node = partition.device.display().to_string();
+
+            // Never touch partitions that are already mounted somewhere
+            if mounted.lines().any(|line| line.starts_with(&format!("{node} "))) {
+                continue;
+            }
+
+            // Read-only, because these are the user's existing partitions and
+            // may hold a foreign OS. A rw mount would replay journals and bump
+            // mount counts on filesystems that do not need to be touched. No
+            // mountable filesystem means not a candidate.
+            if run(Command::new("mount").args(["-o", "ro", &node, &probe.to_string_lossy()])).is_err() {
+                continue;
+            }
+
+            let model_contents = fs::read_to_string(probe.join(INSTALL_MODEL_PATH))
+                .or_else(|_| fs::read_to_string(probe.join(SYSTEM_MODEL_PATH)))
+                .ok();
+            let _ = run(Command::new("umount").arg(probe));
+
+            if let Some(model_contents) = model_contents {
+                info!(device = %node, "Found system or install-model from a previous installation");
+                models.push(DiscoveredModel {
+                    device: node,
+                    contents: model_contents,
+                });
+            }
+        }
+    }
+
+    Ok(models)
+}
+
+/// Mount the target filesystems, install the OS via moss from the system
+/// model written earlier, configure the target, and always unmount again
+fn install_target(request: &InstallSystemRequest, progress: &(dyn Fn(String) + Sync)) -> Result<(), Status> {
+    let target = Path::new(TARGET_MOUNT);
+    fs::create_dir_all(target)?;
+
+    // Sort by path length so a parent is always mounted before its children:
+    // mounting /boot after /boot/efi would shadow the ESP, and blsforme would
+    // write boot entries into a directory nothing ever reads.
+    let mut mounts = request.mounts.clone();
+    mounts.sort_by_key(|mount| mount.mountpoint.len());
+
+    let mut mounted: Vec<PathBuf> = Vec::new();
+    let result = (|| -> Result<(), Status> {
+        progress("Mounting target filesystems".to_string());
+        for mount in &mounts {
+            let mountpoint = target.join(mount.mountpoint.trim_start_matches('/'));
+            fs::create_dir_all(&mountpoint)?;
+            run(Command::new("mount").args([&mount.device, &mountpoint.to_string_lossy().into()]))?;
+            mounted.push(mountpoint);
+        }
+
+        // Virtual filesystems needed by moss triggers and chroot commands
+        for (source, dest) in [
+            ("/dev", "dev"),
+            ("/dev/shm", "dev/shm"),
+            ("/dev/pts", "dev/pts"),
+            ("/proc", "proc"),
+            ("/sys", "sys"),
+        ] {
+            let mountpoint = target.join(dest);
+            fs::create_dir_all(&mountpoint)?;
+            run(Command::new("mount").args(["--bind", source, &mountpoint.to_string_lossy()]))?;
+            mounted.push(mountpoint);
+        }
+
+        // `moss sync --import` does not bootstrap repos on an empty root
+        if request.repositories.is_empty() {
+            warn!("no repos to prime; sync will fail unless moss bootstraps them itself");
+        }
+        configure_repos(target)?;
+        progress("Refreshing package index".to_string());
+        run(Command::new("moss").arg("-D").arg(target).args(["repo", "update"]))?;
+
+        // moss materializes the system from the model, including populating
+        // the mounted ESP/XBOOTLDR with boot entries via its blsforme
+        // integration, which is why the boot mounts must be live first
+        progress("Installing packages".to_string());
+        info!("Running moss sync against the target (this can take a while)");
+        run_streaming(
+            Command::new("moss")
+                .args(["sync", "--import"])
+                .arg(target.join(SYSTEM_MODEL_PATH))
+                .arg("-D")
+                .arg(target)
+                .arg("-u")
+                .arg("-y"),
+            progress,
+        )?;
+
+        progress("Configuring target system".to_string());
+        configure_target(target, request)
+    })();
+
+    // Unwind in reverse: the bind mounts and nested boot mounts sit under the
+    // target root, so unmounting the root first fails with EBUSY and pins it
+    // for the rest of the session. sync last, because the user is told they
+    // may reboot the moment this returns.
+    progress("Unmounting target filesystems".to_string());
+    for mountpoint in mounted.iter().rev() {
+        let _ = run(Command::new("umount").arg(mountpoint));
+    }
+    let _ = run(&mut Command::new("sync"));
+
+    result
+}
+
+/// Make the unstable stream the only configured repo on the installed system,
+/// regardless of which stream the live media primed. Inheriting the live
+/// medium's volatile repo would have the installed system self-upgrade onto a
+/// stream it should never track. Both extensions are cleared because a stale
+/// .yaml would coexist with the .kdl written, giving moss two answers.
+fn configure_repos(target: &Path) -> Result<(), Status> {
+    let repo_dir = target.join(REPO_DIR);
+    fs::create_dir_all(&repo_dir)?;
+
+    for entry in fs::read_dir(&repo_dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext == "yaml" || ext == "kdl") {
+            fs::remove_file(&path)?;
+        }
+    }
+
+    fs::write(repo_dir.join("unstable.kdl"), UNSTABLE_REPO)?;
+    Ok(())
+}
+
+/// Apply the installer-owned config to the installed target
+fn configure_target(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> {
+    if !req.locale.is_empty() {
+        fs::write(target.join("etc/locale.conf"), format!("LANG={}\n", req.locale))?;
+    }
+
+    if !req.timezone.is_empty() {
+        let localtime = target.join("etc/localtime");
+        let _ = fs::remove_file(&localtime);
+        unix::fs::symlink(format!("../usr/share/zoneinfo/{}", req.timezone), &localtime)?;
+    }
+
+    // moss installs systemd's /etc/machine-id from the package set, so the
+    // target would inherit the live medium's id. Every machine installed from
+    // that medium would then share a DHCP DUID and journal id, and systemd
+    // would treat the first boot as an nth boot and skip ConditionFirstBoot
+    // units. Absent is the expected case, hence the ignored result.
+    let _ = fs::remove_file(target.join("etc/machine-id"));
+    run(Command::new("chroot").arg(target).arg("systemd-machine-id-setup"))?;
+
+    if let Some(user) = &req.user {
+        run(Command::new("chroot")
+            .arg(target)
+            .args([
+                "useradd",
+                "-m",
+                "-U",
+                "-G",
+                "audio,adm,wheel,render,kvm,input,users",
+                "-c",
+            ])
+            .args([&user.real_name, &user.username]))?;
+    }
+
+    let mut entries = String::new();
+    if !req.root_password_hash.is_empty() {
+        entries.push_str(&format!("root:{}\n", req.root_password_hash));
+    }
+    if let Some(user) = &req.user {
+        entries.push_str(&format!("{}:{}\n", user.username, user.password_hash));
+    }
+    if !entries.is_empty() {
+        set_passwords(target, &entries)?;
+    }
+
+    write_fstab(target, req)?;
+
+    Ok(())
+}
+
+/// Set account passwords from pre-computed crypt(3) hashes via chpasswd -e
+fn set_passwords(target: &Path, entries: &str) -> Result<(), Status> {
+    let mut child = Command::new("chroot")
+        .arg(target)
+        .args(["chpasswd", "-e"])
+        .stdin(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| Status::internal(format!("failed to spawn chpasswd: {e}")))?;
+
+    child
+        .stdin
+        .take()
+        .expect("stdin was piped")
+        .write_all(entries.as_bytes())?;
+
+    let output = child
+        .wait_with_output()
+        .map_err(|e| Status::internal(format!("chpasswd did not complete: {e}")))?;
+
+    if !output.status.success() {
+        return Err(Status::internal(format!(
+            "chpasswd failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+
+    Ok(())
+}
+
+/// Read a single blkid tag value from a device, bypassing the cache: the
+/// partition was created and formatted moments ago, and a stale entry would
+/// put the previous layout's PARTUUID into the target's fstab.
+fn blkid(device: &str, tag: &str) -> Result<String, Status> {
+    let output = Command::new("blkid")
+        .args(["-c", "/dev/null", "-s", tag, "-o", "value"])
+        .arg(device)
+        .output()
+        .map_err(|e| Status::internal(format!("failed to spawn blkid: {e}")))?;
+
+    if !output.status.success() {
+        return Err(Status::internal(format!("blkid {tag} failed for {device}")));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Run a long command forwarding its output lines as progress, keeping
+/// tail of recent lines for error reporting
+fn run_streaming(command: &mut Command, progress: &(dyn Fn(String) + Sync)) -> Result<(), Status> {
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| Status::internal(format!("failed to spawn {:?}: {e}", command.get_program())))?;
+    let stdout = child.stdout.take().expect("stdout was piped");
+    let stderr = child.stderr.take().expect("stderr was piped");
+    let tail: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
+    let record = |line: &str| {
+        let mut tail = tail.lock().unwrap();
+        if tail.len() >= 30 {
+            tail.pop_front();
+        }
+        tail.push_back(line.to_string());
+    };
+
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                record(&line);
+                warn!("stderr: {line}");
+            }
+        });
+
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            record(&line);
+
+            let cleaned = clean_line(&line);
+            if !cleaned.is_empty() {
+                progress(cleaned);
+            }
+        }
+    });
+
+    let status = child
+        .wait()
+        .map_err(|e| Status::internal(format!("{:?} did not complete: {e}", command.get_program())))?;
+
+    if !status.success() {
+        let detail = tail.lock().unwrap().iter().cloned().collect::<Vec<_>>().join("\n");
+        return Err(Status::internal(format!(
+            "{:?} failed ({}): {}",
+            command.get_program(),
+            status,
+            detail,
+        )));
+    }
+
+    Ok(())
+}
+
+/// Reduce a raw output line to something fit for a one-line progress display
+fn clean_line(line: &str) -> String {
+    let last = line.rsplit('\r').next().unwrap_or(line);
+    let mut cleaned = String::with_capacity(last.len());
+    let mut chars = last.chars();
+
+    while let Some(character) = chars.next() {
+        if character == '\u{1b}' {
+            if chars.next() == Some('[') {
+                for end in chars.by_ref() {
+                    if end.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+            continue;
+        }
+        if !character.is_control() {
+            cleaned.push(character);
+        }
+    }
+    cleaned.trim().to_string()
+}
+
+/// Run a command to completion, mapping failure to a gRPC status carrying
+/// the command's stderr
+fn run(command: &mut Command) -> Result<(), Status> {
+    let output = command
+        .output()
+        .map_err(|e| Status::internal(format!("failed to spawn {:?}: {e}", command.get_program())))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let detail = if stderr.trim().is_empty() { stdout } else { stderr };
+
+        return Err(Status::internal(format!(
+            "{:?} failed ({}): {}",
+            command.get_program(),
+            output.status,
+            detail.trim()
+        )));
+    }
+    Ok(())
+}
+
+/// Mount options and fsck pass for the target filesystem.
+///
+/// bcachefs has no fsck helper following the fsck(8) exit protocol, so
+/// any non-zero pass drops the boot into emergency mode on a healthy
+/// filesystem. vfat carries no UNIX permissions, so without an explicit
+/// umask the ESP and XBOOTLDR contents are world readable.
+fn fstab_params(mountpoint: &str, fstype: &str) -> (&'static str, u8) {
+    match (mountpoint, fstype) {
+        ("/", "bcachefs") => ("defaults", 0),
+        ("/", _) => ("defaults", 1),
+        (_, "vfat") => ("defaults,umask=0077", 0),
+        _ => ("defaults", 2),
+    }
+}
+
+fn write_fstab(target: &Path, req: &InstallSystemRequest) -> Result<(), Status> {
+    let mut mounts = req
+        .mounts
+        .iter()
+        .filter(|mount| mount.mountpoint.starts_with('/'))
+        .collect::<Vec<_>>();
+    mounts.sort_by_key(|mount| mount.mountpoint.len());
+
+    // A rootless fstable is worse than none: the initrd hands off to a system
+    // that can neither remount / nor find /boot.
+    if !mounts.iter().any(|mount| mount.mountpoint == "/") {
+        return Err(Status::internal("target has no root mount; refusing to write fstab"));
+    }
+
+    let mut fstab = String::from("# /etc/fstab: static filesystem information.\n");
+
+    for mount in mounts {
+        let partuuid = blkid(&mount.device, "PARTUUID")?;
+        let fstype = blkid(&mount.device, "TYPE")?;
+        let (options, pass) = fstab_params(&mount.mountpoint, &fstype);
+
+        fstab.push_str(&format!(
+            "PARTUUID={partuuid} {} {fstype} {options} 0 {pass}\n",
+            mount.mountpoint
+        ));
+    }
+
+    fs::write(target.join("etc/fstab"), fstab)?;
+    Ok(())
+}

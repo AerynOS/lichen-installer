@@ -6,9 +6,10 @@
 mod step;
 use std::collections::{HashMap, HashSet};
 
-use protocols::lichen::storage::provisioner::provisioner_client;
-use protocols::lichen::system::system_client;
-use protocols::lichen::{locales::locales_client, storage::disks::disks_client};
+use protocols::lichen::{
+    install::install_client::InstallClient, locales::locales_client, storage::disks::disks_client,
+    storage::provisioner::provisioner_client, system::system_client,
+};
 pub use step::*;
 mod icon;
 pub use icon::*;
@@ -52,13 +53,19 @@ pub enum Error {
     ConnectionError(#[from] protocols::Error),
 
     #[error("Backend error: {0}")]
-    BackendError(#[from] tonic::Status),
+    BackendError(#[from] Box<tonic::Status>),
 
     #[error("Failed to load step plugin: {0}")]
     StepLoadError(String),
 
     #[error("Navigation error: {0}")]
     NavigationError(#[from] NavigationError),
+}
+
+impl From<tonic::Status> for Error {
+    fn from(status: tonic::Status) -> Self {
+        Self::BackendError(Box::new(status))
+    }
 }
 
 impl InstallerBuilder {
@@ -248,6 +255,12 @@ impl Installer {
     /// Grab a provisioner RPC client
     pub async fn provisioner(&self) -> Result<provisioner_client::ProvisionerClient<Channel>, Error> {
         let client = provisioner_client::ProvisionerClient::new(self.channel.clone());
+        Ok(client)
+    }
+
+    /// Grab an install RPC client
+    pub async fn install(&self) -> Result<InstallClient<Channel>, Error> {
+        let client = InstallClient::new(self.channel.clone());
         Ok(client)
     }
 

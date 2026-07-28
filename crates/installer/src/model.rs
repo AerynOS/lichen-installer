@@ -3,13 +3,28 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+mod accounts;
 mod region;
+mod software;
+mod storage;
+
+pub use accounts::User;
 
 /// Installation settings
 ///
-/// We take care to use *copy* semantics in order to avoid any spaghetti code
-/// which would then make a separate installer backend a nightmare to implement.
+/// The installer's in-memory state. Projected into all model output documents:
+/// `software.packages` becomes the system-model, and the whole struct becomes
+/// the install-model record. Neither document is the source of truth for it.
+#[derive(Debug, Default)]
 pub struct Model {
     /// Region specific installation settings
     pub region: region::Model,
+    /// Storage and partitioning selections
+    pub storage: storage::Model,
+    /// Account selections
+    pub accounts: accounts::Model,
+    /// Software selections
+    pub software: software::Model,
+    /// Set when the model came from an OS refresh or an imported document.
+    pub imported: bool,
 }

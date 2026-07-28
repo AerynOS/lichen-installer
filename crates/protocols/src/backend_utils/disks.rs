@@ -5,7 +5,7 @@
 
 use std::ops::Deref;
 
-use disks::BlockDevice;
+use disks::{BlockDevice, SECTOR_SIZE, format_size};
 
 use crate::lichen::storage::disks as proto_disks;
 
@@ -26,8 +26,7 @@ where
             size: partition.size,
             node: partition.node.to_string_lossy().to_string(),
             device: partition.device.to_string_lossy().to_string(),
-            // TODO: Fix global assumption re 512 byte sectors
-            display_size: disks::format_size(partition.size * 512),
+            display_size: format_size(partition.size * SECTOR_SIZE),
         }
     }
 }
@@ -43,7 +42,7 @@ where
 {
     fn from(device: T) -> Self {
         match &*device {
-            BlockDevice::Disk(ref disk) => proto_disks::Disk {
+            BlockDevice::Disk(disk) => proto_disks::Disk {
                 name: device.name().to_owned(),
                 sectors: device.sectors(),
                 device: device.device().to_string_lossy().to_string(),
@@ -60,7 +59,7 @@ where
                 display_size: disks::format_size(device.size()),
                 image_path: None,
             },
-            BlockDevice::Loopback(ref loopback) => proto_disks::Disk {
+            BlockDevice::Loopback(loopback) => proto_disks::Disk {
                 name: device.name().to_owned(),
                 sectors: device.sectors(),
                 device: device.device().to_string_lossy().to_string(),
