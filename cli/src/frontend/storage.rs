@@ -317,10 +317,41 @@ pub fn render_plan(plan: &StrategyPlan) -> String {
     }
 
     if !plan.role_mounts.is_empty() {
+        // The @/@home layout is applied backend-side for the btrfs root, so it
+        // isn't in the role_mounts; reconstruct it here for the preview.
+        let root_device = plan
+            .role_mounts
+            .iter()
+            .find(|role_mount| role_mount.mountpoint == "/")
+            .map(|role_mount| role_mount.device.as_str());
+        let root_btrfs = root_device.is_some_and(|device| {
+            plan.filesystems.iter().any(|plan_fs| {
+                plan_fs.device == device
+                    && plan_fs
+                        .filesystem
+                        .as_ref()
+                        .is_some_and(|filesystem| filesystem.filesystem_type == "btrfs")
+            })
+        });
+        let has_home = plan
+            .role_mounts
+            .iter()
+            .any(|role_mount| role_mount.mountpoint == "/home");
+
         out.push_str("\nMounts:\n");
         plan.role_mounts.iter().for_each(|role_mount| {
-            out.push_str(&format!("  {} <- {}\n", role_mount.mountpoint, role_mount.device));
+            if root_btrfs && role_mount.mountpoint == "/" {
+                out.push_str(&format!("  / <- {} (subvol=@)\n", role_mount.device));
+            } else {
+                out.push_str(&format!("  {} <- {}\n", role_mount.mountpoint, role_mount.device));
+            }
         });
+
+        if root_btrfs && !has_home {
+            if let Some(device) = root_device {
+                out.push_str(&format!("  /home <- {device} (subvol=@home)\n"));
+            }
+        }
     }
 
     out
