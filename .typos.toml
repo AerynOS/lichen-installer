@@ -1,0 +1,4 @@
+[default.extend-words]
+## Part of KDL package name specification
+-thumbnailers = "-thumbnailers"
+
