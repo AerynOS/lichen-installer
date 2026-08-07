@@ -21,7 +21,6 @@ cliclack.workspace = true
 color-eyre = { workspace = true, features = ["issue-url"] }
 console.workspace = true
 kdl.workspace = true
-sha-crypt.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
@@ -30,6 +29,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tokio = { workspace = true, features = ["full"] }
 async-trait.workspace = true
 clap = { version = "4.6.4", features = ["derive"] }
+yescrypt.workspace = true
 
 [lints]
 workspace = true
